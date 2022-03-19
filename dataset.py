@@ -95,14 +95,21 @@ class DataBuilder:
     """Класс для подготовки тренировочных данных для модели"""
 
     def __init__(self, token: str, serializer="csv", show_forward=False,
+                 embed_train=False, from_end=True, step_window=500,
                  train_window=1000, val_window=0.4, test_window=300) -> None:
         self.token = token
         self.serializer = serializer
         self.show_forward = show_forward
+        self.embed_train = embed_train
+        self.step_window = step_window
+        self.from_end = from_end
 
         self.train_window = train_window
         self.val_window = val_window
         self.test_window = test_window
+        self.train_index = 0
+        self.val_index = 0
+        self.test_index = 0
 
         self.data = self._try_load_or_make_dataset()
         self.scaler = preprocessing.MinMaxScaler()
@@ -123,11 +130,39 @@ class DataBuilder:
             # data = FeaturesBuilder(data).make_features()
             # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
             data.to_csv(f"datasets/{self.token}_.csv")
+        # Сформировать окна для модели
+        self._form_windows(data)
         # Если включено отображение форвардного анализа - выводим график
         if self.show_forward:
-            ChartBuilder(self.token, data, self.train_window,
-                         self.val_window, self.test_window).draw()
+            print("test_index", self.test_index,
+                  "train_index", self.train_index,
+                  "val_index", self.val_index)
+            ChartBuilder(self.token, data,
+                         self.train_index, self.val_index, self.test_index,
+                         self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
         return data
+
+    def _form_windows(self, data: pd.DataFrame) -> None:
+        """Метод для формирования окон данных"""
+
+        # Тренировочная выборка будет определена как начало датасета + шаг окна
+        self.train_index = self.step_window
+        # Проверочная выборка будет определена как конец тренировочного окна,
+        # если выборка будет не вложенная. Иначе умещаем выборку в тренировочную
+        self.val_index = self.train_index + self.train_window \
+            if not self.embed_train else self.train_index + self.train_window - int(self.train_window * self.val_window)
+        # Тестовая выборка будет определена как конец валидационного окна
+        self.test_index = self.val_index + int(self.val_window * self.train_window)
+
+        # Если необходимо брать окно с конца, переносим
+        if self.from_end:
+            # Отнимем от общего размера данных конец нашего последнего окна
+            # и получим общий индекс свдига
+            index_offset = data.shape[0] - (self.test_index + self.test_window)
+
+            self.train_index += index_offset
+            self.val_index += index_offset
+            self.test_index += index_offset
 
     def _read_dataset_from_file(self) -> np.array:
         """Метод для чтения данных с биржи из файла"""

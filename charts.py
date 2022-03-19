@@ -206,17 +206,20 @@ class ChartBuilder:
     """Класс для построения графиков
     результатов обучения сети"""
 
-    def __init__(self, token, data, train_window=1000, val_window=0.4, test_window=300) -> None:
+    def __init__(self, token, data,
+                 train_index, val_index, test_index,
+                 train_window=1000, val_window=0.4, test_window=300) -> None:
         self.data = data
         self.token = token
+
+        self.train_index = train_index
+        self.val_index = val_index
+        self.test_index = test_index
 
         self.train_window = train_window
         self.val_window = val_window
         self.test_window = test_window
 
-    def draw(self) -> None:
-        """Метод для вывода графика датасета и его
-        тренировочных/проверочных параметрах"""
         plt.style.use("seaborn-dark")
 
         for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
@@ -224,10 +227,24 @@ class ChartBuilder:
         for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
             plt.rcParams[param] = '0.9'
 
-        fig, ax0 = plt.subplots(1, 1, figsize=(13, 5))
+    def draw(self) -> None:
+        """Метод для вывода графика датасета и его
+        тренировочных/проверочных параметрах"""
 
-        ax0.set_title(f"{self.token}_1min")
-        ax0.plot(self.data["Close"], label="Price")
+        fig, ax0 = plt.subplots(1, 1, figsize=(13, 3))
+
+        ax0.set_title(f"Train Window {self.token}_1min")
+        ax0.plot(self.data.index, self.data["Close"], label="Price")
+
+        ax0.plot(self.data.index[self.train_index:self.train_index + self.train_window],
+                 self.data["Close"][self.train_index:self.train_index + self.train_window], label="Train")
+
+        ax0.plot(self.data.index[self.val_index:self.val_index + self.val_window],
+                 self.data["Close"][self.val_index:self.val_index + self.val_window], label="Val")
+
+        ax0.plot(self.data.index[self.test_index:self.test_index + self.test_window],
+                 self.data["Close"][self.test_index:self.test_index + self.test_window], label="Test")
+
         ax0.set_xlabel("Time")
         ax0.set_ylabel("Price")
         ax0.grid(color='#2A3459')
