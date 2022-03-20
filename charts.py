@@ -202,6 +202,42 @@ class LearningChartBuilder:
         plt.show()
 
 
+class FeaturesChartBuilder:
+    """Класс для построения графиков
+        существующих фич"""
+
+    def __init__(self, featurized_data, show_only) -> None:
+        self.featurized_data = featurized_data
+        self.show_only = show_only
+
+        plt.style.use("seaborn-dark")
+
+        for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
+            plt.rcParams[param] = '#212946'
+        for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
+            plt.rcParams[param] = '0.9'
+
+    def draw(self) -> None:
+        """Метод для вывода графика всех разрешенных фич"""
+
+        # Если включено отббражение всех фич, берем общий размер датасета
+        # иначе получаем размер разрешенных фич
+        total_features = self.featurized_data.shape[1] if "__all__" in self.show_only else len(self.show_only)
+        print("self.featurized_data.shape[1]", self.featurized_data.shape[1])
+        fig, axes = plt.subplots(total_features, 1)
+
+        fig.suptitle('Features', fontsize=16)
+
+        for index, ax in enumerate(axes):
+            ax.set_title(self.featurized_data.columns[index])
+            ax.plot(self.featurized_data.iloc[:, index])
+            ax.set_ylabel("Value")
+            ax.grid(color='#2A3459')
+
+        plt.legend()
+        plt.show()
+
+
 class ChartBuilder:
     """Класс для построения графиков
     результатов обучения сети"""
@@ -235,7 +271,7 @@ class ChartBuilder:
 
         ax0.set_title(f"Train Window {self.token}_1min")
         ax0.plot(self.data.index, self.data["Close"], label="Price")
-
+        print(self.data["Close"])
         ax0.plot(self.data.index[self.train_index:self.train_index + self.train_window],
                  self.data["Close"][self.train_index:self.train_index + self.train_window], label="Train")
 

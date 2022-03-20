@@ -3,102 +3,21 @@ import pickle
 import pandas as pd
 from sklearn import preprocessing
 from charts import ChartBuilder
-
-
-class MarkupBuilder:
-    """Класс для расставления разметки для обучения"""
-
-    def __init__(self, data, serializer="pkl") -> None:
-        self.data = data
-        self.serializer = serializer
-
-    def make_markup(self, percent: float, candles: []) -> []:
-        """Метод для получения экстремумов функции в процентах"""
-        signals = [
-            [145, "BUY"], [183, "SELL"],
-            [381, "BUY"], [403, "SELL"],
-            [501, "BUY"], [515, "SELL"],
-            [617, "BUY"], [729, "SELL"],
-
-            [1615, "BUY"], [1645, "SELL"],
-            [1743, "BUY"], [1802, "SELL"],
-            [2114, "BUY"], [2119, "SELL"],
-            [2171, "BUY"], [2261, "SELL"],
-
-            [2270, "BUY"], [2916, "SELL"],
-            [3154, "BUY"], [3224, "SELL"],
-        ]
-        # plt.plot(candles[:, 0])
-        # plt.grid()
-        # plt.show()
-        # for index, price in enumerate(price_history):
-        #     current_price = price
-        #     interval = 0
-        #     while interval <= max_interval or \
-        #             interval + index > len(price_history) - 1:
-        #         if price_history[index + interval] > current_price + current_price / 100 * percent:
-        #             # Нашли что хотели
-        #             pass
-        #         elif price_history[index + interval] < current_price - current_price / 100 * percent:
-        #             # Нашли что хотели
-        #             pass
-        # for index, price in enumerate(price_history):
-        #     if index != 0:
-        #         # Если N-ая цена в графике больше на X% последней точки
-        #         if price > signals[-1]['Price'] + signals[-1]['Price'] / 100 * percent:
-        #             signals[-1]['Type'] = 'BUY'
-        #         # Если N-ая цена в графике меньше на X% последней точки
-        #         elif price < signals[-1]['Price'] - signals[-1]['Price'] / 100 * percent:
-        #             signals[-1]['Type'] = 'SELL'
-        #         else:
-        #             signals[-1]['History'].append(price)
-        #             continue
-        #
-        #     signals.append({
-        #         'Type': 'HZ',
-        #         'Start': index,
-        #         'Price': price,
-        #         'History': [price]
-        #     })
-
-        return np.array(signals)
-
-    # def _signals_normalization(self, signals: []) -> []:
-    #     """Метод для преобразования шумовых сигнилов в нормальные"""
-    #     norm_signals = []
-    #     preview_signal_type = 'HZ'
-    #
-    #     for signal in signals:
-    #         if signal['Type'] != preview_signal_type:
-    #             norm_signals.append({
-    #                 'Type': signal['Type'],
-    #                 'Start': signal['Start'],
-    #                 'Price': signal['Price'],
-    #             })
-    #             preview_signal_type = signal['Type']
-    #
-    #     return np.array(norm_signals)
-
-
-class FeaturesBuilder:
-    """Класс для добавления фич внутри данных"""
-
-    def __init__(self, data, serializer="pkl") -> None:
-        self.data = data
-        self.serializer = serializer
-
-    def make_features(self) -> pd.DataFrame:
-        pass
+from features import FeaturesBuilder
 
 
 class DataBuilder:
     """Класс для подготовки тренировочных данных для модели"""
 
-    def __init__(self, token: str, serializer="csv", show_forward=False,
+    def __init__(self, token: str, features=None, save_serializer=False, serializer="csv",
+                 show_features=None, show_forward=False,
                  embed_train=False, from_end=True, step_window=500,
                  train_window=1000, val_window=0.4, test_window=300) -> None:
         self.token = token
+        self.features = features
         self.serializer = serializer
+        self.save_serializer = save_serializer
+        self.show_features = show_features
         self.show_forward = show_forward
         self.embed_train = embed_train
         self.step_window = step_window
@@ -111,25 +30,34 @@ class DataBuilder:
         self.val_index = 0
         self.test_index = 0
 
-        self.data = self._try_load_or_make_dataset()
+        self.data, self.featurized_data = self._try_load_or_make_dataset()
         self.scaler = preprocessing.MinMaxScaler()
 
-    def _try_load_or_make_dataset(self) -> pd.DataFrame:
+    def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
         try:
             # Попробуем загрузить файл из директории
             data = pd.read_csv(f"datasets/{self.token}_.csv")
+            # Попробуем загрузить файл из директории
+            featurized_data = pd.read_csv(f"datasets/{self.token}_featurized_.csv")
         except FileNotFoundError:
             # Файл не найден, необходимо сгенерировать датасет с нуля
             # для этого выгрузим не отформатированные данные из каталога _no_format
             data = self._read_dataset_from_file()[:5000, :-1]
             # Переводим numpy массив в DataFrame, чтобы в дальнейшем было удобно работать с данными
             data = pd.DataFrame(data, columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
+            data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
             data = data.set_index("Datetime")
-            # Добавим фичи
-            # data = FeaturesBuilder(data).make_features()
-            # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
-            data.to_csv(f"datasets/{self.token}_.csv")
+            # Добавим фичи и формируем новый датасет
+            featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
+
+            if self.save_serializer:
+                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
+                data.to_csv(f"datasets/{self.token}_.csv")
+                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
+                featurized_data.to_csv(f"datasets/{self.token}_featurized_.csv")
+        print("Dataset", data)
+        print("Featurized Dataset", featurized_data)
         # Сформировать окна для модели
         self._form_windows(data)
         # Если включено отображение форвардного анализа - выводим график
@@ -140,7 +68,7 @@ class DataBuilder:
             ChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
-        return data
+        return data, featurized_data
 
     def _form_windows(self, data: pd.DataFrame) -> None:
         """Метод для формирования окон данных"""
