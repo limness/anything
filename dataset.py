@@ -1,19 +1,40 @@
 import numpy as np
 import pickle
 import pandas as pd
+import tensorflow as tf
 from sklearn import preprocessing
 from charts import WindowsChartBuilder
 from features import FeaturesBuilder
+from markups import MarkupBuilder
 
 
 class DataBuilder:
-    """Класс для подготовки тренировочных данных для модели"""
+    """
+    Класс для подготовки данных для модели
+
+    @ patch_size - Размер выборки по которым модель будет делать прогноз из прошлого (патча)
+    @ features - Список используемых фич для обучения модели
+    @ save_serializer - Сохранять полученный датасет без/с фич(ами) в конце
+    @ show_features - Показывать текущие фичи в датасете
+    @ show_forward - Показывать полученные окна на графике
+    @ embed_train - Сделать вложенное проверочное окно
+    @ step_window - Отступ окон с начала датасета
+    @ from_end - Перенести окна в конец датасета
+    @ train_window - Размер тренировочного окна
+    @ val_window - Размер валидационного окна
+    @ test_window - Размер тестового окна
+    @ train_index - Индекс начала тренировочного окна
+    @ val_index - Индекс начала валидационного окна
+    @ test_index - Индекс начала тестового окна
+
+    """
 
     def __init__(self, token: str, features=None, save_serializer=False, serializer="csv",
-                 show_features=None, show_forward=False,
+                 patch_size=64, show_features=None, show_forward=False,
                  embed_train=False, from_end=True, step_window=500,
                  train_window=1000, val_window=0.4, test_window=300) -> None:
         self.token = token
+        self.patch_size = patch_size
         self.features = features
         self.serializer = serializer
         self.save_serializer = save_serializer
@@ -30,8 +51,9 @@ class DataBuilder:
         self.val_index = 0
         self.test_index = 0
 
-        self.data, self.featurized_data = self._try_load_or_make_dataset()
+        self.data, self.featurized_data, self.targets = self._try_load_or_make_dataset()
         self.scaler = preprocessing.MinMaxScaler()
+        self.smth = self._form_train_data_for_model()
 
     def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
@@ -40,6 +62,8 @@ class DataBuilder:
             data = pd.read_csv(f"datasets/{self.token}_.csv")
             # Попробуем загрузить файл из директории
             featurized_data = pd.read_csv(f"datasets/{self.token}_featurized_.csv")
+            # Попробуем загрузить файл из директории
+            targets = pd.read_csv(f"datasets/{self.token}_targets_.csv")
         except FileNotFoundError:
             # Файл не найден, необходимо сгенерировать датасет с нуля
             # для этого выгрузим не отформатированные данные из каталога _no_format
@@ -48,6 +72,8 @@ class DataBuilder:
             data = pd.DataFrame(data, columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
             data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
             data = data.set_index("Datetime")
+            # Делаем разметку по всему датасету
+            targets = MarkupBuilder(data).make_markup()
             # Добавим фичи и формируем новый датасет
             featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
 
@@ -56,6 +82,9 @@ class DataBuilder:
                 data.to_csv(f"datasets/{self.token}_.csv")
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 featurized_data.to_csv(f"datasets/{self.token}_featurized_.csv")
+                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
+                targets.to_csv(f"datasets/{self.token}_targets_.csv")
+
         print("Dataset", data)
         print("Featurized Dataset", featurized_data)
         # Сформировать окна для модели
@@ -68,7 +97,7 @@ class DataBuilder:
             WindowsChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
-        return data, featurized_data
+        return data, featurized_data, targets
 
     def _form_windows(self, data: pd.DataFrame) -> None:
         """Метод для формирования окон данных"""
@@ -91,6 +120,32 @@ class DataBuilder:
             self.train_index += index_offset
             self.val_index += index_offset
             self.test_index += index_offset
+
+    def __form_patches(self, start_index: int, end_index: int) -> object:
+        """Метод для формирования патчей из датасета"""
+        patches = tf.keras.preprocessing.sequence.TimeseriesGenerator(
+            self.featurized_data, self.targets, self.patch_size,
+            sampling_rate=1, stride=1, start_index=start_index, end_index=end_index,
+            shuffle=False, reverse=False, batch_size=1
+        )
+        return patches
+
+    def _form_train_data_for_model(self) -> object:
+        """Метод для формирования данных для обучения и проверки модели"""
+
+        # Формируем патчи
+        patches = self.__form_patches(
+            self.train_index,
+            self.train_index + self.train_window
+        )
+        print("patches", patches)
+        # print("patches2", patches[34])
+        print("self.targets", self.targets.shape[0])
+        print("patches", len(patches))
+        for pa in patches:
+            print(pa)
+        print("that's all")
+        return patches
 
     def _read_dataset_from_file(self) -> np.array:
         """Метод для чтения данных с биржи из файла"""

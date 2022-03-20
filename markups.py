@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 
 class MarkupBuilder:
@@ -8,7 +9,13 @@ class MarkupBuilder:
         self.data = data
         self.serializer = serializer
 
-    def make_markup(self, percent: float, candles: []) -> []:
+    def make_markup(self) -> pd.DataFrame:
+        """Метод для формирования разметки"""
+        df = pd.DataFrame()
+        df["Signal"] = self.data["Open"]
+        return df
+
+    def t_make_markup(self, percent: float, candles: []) -> []:
         """Метод для получения экстремумов функции в процентах"""
         signals = [
             [145, "BUY"], [183, "SELL"],
