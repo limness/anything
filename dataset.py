@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 import pandas as pd
 from sklearn import preprocessing
-from charts import ChartBuilder
+from charts import WindowsChartBuilder
 from features import FeaturesBuilder
 
 
@@ -65,7 +65,7 @@ class DataBuilder:
             print("test_index", self.test_index,
                   "train_index", self.train_index,
                   "val_index", self.val_index)
-            ChartBuilder(self.token, data,
+            WindowsChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
         return data, featurized_data
