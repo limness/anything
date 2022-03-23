@@ -155,8 +155,10 @@ class DataBuilder:
     @patches_generator
     def _val_window(self) -> tuple:
         """Метод для обрезания общих данных до нужных окон"""
-        data = self.data[self.val_index:self.val_index + self.val_window]
-        targets = self.targets[self.val_index:self.val_index + self.val_window]
+        # print("data before here", self.data)
+        # print(self.val_index, self.val_window)
+        data = self.data[self.val_index:self.val_index + int(self.val_window * self.train_window)]
+        targets = self.targets[self.val_index:self.val_index + int(self.val_window * self.train_window)]
         return data, targets
 
     @patches_generator

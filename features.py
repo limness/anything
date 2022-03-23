@@ -8,7 +8,7 @@ class FeaturesBuilder:
     """Класс для добавления фич внутри данных"""
 
     def __init__(self, data, features=None, show_features=None, features_args=None,
-                 by_patch=False, serializer="pkl") -> None:
+                 by_patch=False, patch_size=50, serializer="pkl") -> None:
         if features is None:
             features = ["open_as_is", "high_as_is", "low_as_is", "close_as_is"]
         if features_args is None:
@@ -18,6 +18,7 @@ class FeaturesBuilder:
         self.features = features
         self.features_args = features_args
         self.by_patch = by_patch
+        self.patch_size = patch_size
 
         # Генерируем фичи и получаем новый датасет
         self.featurized_data = self.make_features()
@@ -38,35 +39,50 @@ class FeaturesBuilder:
     def _make_features_by_patch(self, dataset) -> pd.DataFrame:
         """Метод для формирования фич отдельно по каждому патчу
         Необходимо для симуляции расставления фич, как в реальном времени"""
-        for index, bar in enumerate(dataset):
-            pass
+        df_patches_featurized = pd.DataFrame()
 
+        print("before set", dataset.shape)
+        # Проходимся по всему обрезанному датасету (окну)
+        for index in range(dataset.shape[0]):
+            if index + self.patch_size == dataset.shape[0] + 1:
+                break
+            # Разбиваем окно на отдельный патч
+            df_patch = dataset.iloc[index:index + self.patch_size]
+            # Подаем патч в метод для формирования фич
+            df_patch_featurized = self._make_features_by_full_dataset(df_patch)
+
+            # Так как мы пытаемся симулировать прогноз в реальной жизни
+            # необходимо из всего патча оставить лишь последний бар
+            # по котоорому модель затем будет делать предсказание
+            df_patches_featurized = pd.concat([df_patches_featurized, df_patch_featurized.iloc[-1:]])
+
+        print("final set", df_patches_featurized.shape)
         return dataset
 
-    def _make_features_by_full_dataset(self, dataset) -> pd.DataFrame:
+    def _make_features_by_full_dataset(self, dataset: pd.DataFrame) -> pd.DataFrame:
         """Метод для формирования фич по всему датасету"""
         df = pd.DataFrame()
 
         # Добавляем параметр открытия цены
         if "open_as_is" in self.features:
-            df["Open"] = self.data["Open"]
+            df["Open"] = dataset["Open"]
 
         # Добавляем параметр пика цены
         if "high_as_is" in self.features:
-            df["High"] = self.data["High"]
+            df["High"] = dataset["High"]
 
         # Добавляем параметр дна цены
         if "low_as_is" in self.features:
-            df["Low"] = self.data["Low"]
+            df["Low"] = dataset["Low"]
 
         # Добавляем параметр закрытия цены
         if "close_as_is" in self.features:
-            df["Close"] = self.data["Close"]
+            df["Close"] = dataset["Close"]
 
         # Добавляем параметр фильтра, используя цену закрытия
         if "LF" in self.features:
             lf_window = self.features_args.get("LF_window", 30)
-            df["LF" + str(lf_window)] = FeaturesBuilder.butter_lowpass_filter(self.data["Close"], fs=lf_window)
+            df["LF" + str(lf_window)] = FeaturesBuilder.butter_lowpass_filter(dataset["Close"], fs=lf_window)
 
         return df
 
