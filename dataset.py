@@ -30,7 +30,7 @@ class DataBuilder:
     """
 
     def __init__(self, token: str, features=None, save_serializer=False, serializer="csv",
-                 patch_size=64, show_features=None, show_forward=False,
+                 patch_size=30, show_features=None, show_forward=False,
                  embed_train=False, from_end=True, step_window=500,
                  train_window=1000, val_window=0.4, test_window=300) -> None:
         self.token = token
@@ -51,9 +51,14 @@ class DataBuilder:
         self.val_index = 0
         self.test_index = 0
 
-        self.data, self.featurized_data, self.targets = self._try_load_or_make_dataset()
+        self.data, self.targets = self._try_load_or_make_dataset() #self.featurized_data,
         self.scaler = preprocessing.MinMaxScaler()
-        self.smth = self._form_train_data_for_model()
+        self.train_generator = self._train_window()
+        self.val_generator = self._val_window()
+        self.test_generator = self._test_window()
+        # print(type(self.train_generator))
+        # print("=====")
+        # print(len(self.train_generator))
 
     def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
@@ -74,21 +79,21 @@ class DataBuilder:
             data = data.set_index("Datetime")
             # Делаем разметку по всему датасету
             targets = MarkupBuilder(data).make_markup()
-            # Добавим фичи и формируем новый датасет
-            featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
+            # # Добавим фичи и формируем новый датасет
+            # featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
 
             if self.save_serializer:
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 data.to_csv(f"datasets/{self.token}_.csv")
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
-                featurized_data.to_csv(f"datasets/{self.token}_featurized_.csv")
+                # featurized_data.to_csv(f"datasets/{self.token}_featurized_.csv")
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 targets.to_csv(f"datasets/{self.token}_targets_.csv")
 
         print("Dataset", data)
-        print("Featurized Dataset", featurized_data)
+        # print("Featurized Dataset", featurized_data)
         # Сформировать окна для модели
-        self._form_windows(data)
+        self._form_index_windows(data)
         # Если включено отображение форвардного анализа - выводим график
         if self.show_forward:
             print("test_index", self.test_index,
@@ -97,10 +102,10 @@ class DataBuilder:
             WindowsChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
-        return data, featurized_data, targets
+        return data, targets# featurized_data, targets
 
-    def _form_windows(self, data: pd.DataFrame) -> None:
-        """Метод для формирования окон данных"""
+    def _form_index_windows(self, data: pd.DataFrame) -> None:
+        """Метод для формирования индексов окон"""
 
         # Тренировочная выборка будет определена как начало датасета + шаг окна
         self.train_index = self.step_window
@@ -111,7 +116,7 @@ class DataBuilder:
         # Тестовая выборка будет определена как конец валидационного окна
         self.test_index = self.val_index + int(self.val_window * self.train_window)
 
-        # Если необходимо брать окно с конца, переносим
+        # Если необходимо брать окна с конца, переносим все
         if self.from_end:
             # Отнимем от общего размера данных конец нашего последнего окна
             # и получим общий индекс свдига
@@ -121,31 +126,45 @@ class DataBuilder:
             self.val_index += index_offset
             self.test_index += index_offset
 
-    def __form_patches(self, start_index: int, end_index: int) -> object:
+    def __form_patches(self, data, targets) -> object:
         """Метод для формирования патчей из датасета"""
         patches = tf.keras.preprocessing.sequence.TimeseriesGenerator(
-            self.featurized_data, self.targets, self.patch_size,
-            sampling_rate=1, stride=1, start_index=start_index, end_index=end_index,
-            shuffle=False, reverse=False, batch_size=1
+            data=data.to_numpy(), targets=targets.to_numpy(), length=self.patch_size,
+            sampling_rate=1, batch_size=64
         )
         return patches
 
-    def _form_train_data_for_model(self) -> object:
-        """Метод для формирования данных для обучения и проверки модели"""
+    def patches_generator(former) -> object:
+        """Метод для формирования данных для обучения модели"""
+        def wrapper(self):
+            data, targets = former(self)
+            # Добавим фичи, формируем новый датасет
+            featurized_data = FeaturesBuilder(data, self.features, by_patch=True).make_features()
+            # Формируем патчи из полученного финального датасета
+            patches = self.__form_patches(featurized_data, targets)
+            return patches
+        return wrapper
 
-        # Формируем патчи
-        patches = self.__form_patches(
-            self.train_index,
-            self.train_index + self.train_window
-        )
-        print("patches", patches)
-        # print("patches2", patches[34])
-        print("self.targets", self.targets.shape[0])
-        print("patches", len(patches))
-        for pa in patches:
-            print(pa)
-        print("that's all")
-        return patches
+    @patches_generator
+    def _train_window(self) -> tuple:
+        """Метод для обрезания общих данных до нужных окон"""
+        data = self.data[self.train_index:self.train_index + self.train_window]
+        targets = self.targets[self.train_index:self.train_index + self.train_window]
+        return data, targets
+
+    @patches_generator
+    def _val_window(self) -> tuple:
+        """Метод для обрезания общих данных до нужных окон"""
+        data = self.data[self.val_index:self.val_index + self.val_window]
+        targets = self.targets[self.val_index:self.val_index + self.val_window]
+        return data, targets
+
+    @patches_generator
+    def _test_window(self) -> tuple:
+        """Метод для обрезания общих данных до нужных окон"""
+        data = self.data[self.test_index:self.test_index + self.test_window]
+        targets = self.targets[self.test_index:self.test_index + self.test_window]
+        return data, targets
 
     def _read_dataset_from_file(self) -> np.array:
         """Метод для чтения данных с биржи из файла"""
