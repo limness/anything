@@ -30,7 +30,7 @@ class DataBuilder:
     """
 
     def __init__(self, token: str, features=None, save_serializer=False, serializer="csv",
-                 patch_size=30, show_features=None, show_forward=False,
+                 patch_size=30, markup_frequency=10.0, show_features=None, show_forward=False, show_markup=False,
                  embed_train=False, from_end=True, step_window=500,
                  train_window=1000, val_window=0.4, test_window=300) -> None:
         self.token = token
@@ -38,6 +38,8 @@ class DataBuilder:
         self.features = features
         self.serializer = serializer
         self.save_serializer = save_serializer
+        self.markup_frequency = markup_frequency
+        self.show_markup = show_markup
         self.show_features = show_features
         self.show_forward = show_forward
         self.embed_train = embed_train
@@ -78,7 +80,7 @@ class DataBuilder:
             data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
             data = data.set_index("Datetime")
             # Делаем разметку по всему датасету
-            targets = MarkupBuilder(data).make_markup()
+            targets = MarkupBuilder(data, self.markup_frequency, self.show_markup).make_markup()
             # # Добавим фичи и формируем новый датасет
             # featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
 
@@ -134,34 +136,37 @@ class DataBuilder:
         )
         return patches
 
-    def patches_generator(former) -> object:
-        """Метод для формирования данных для обучения модели"""
-        def wrapper(self):
-            data, targets = former(self)
-            # Добавим фичи, формируем новый датасет
-            featurized_data = FeaturesBuilder(data, self.features, by_patch=True).make_features()
-            # Формируем патчи из полученного финального датасета
-            patches = self.__form_patches(featurized_data, targets)
-            return patches
-        return wrapper
+    # @staticmethod
+    def patches_generator(patch_feature):
+        def wrapper_generator(former) -> object:
+            """Метод для формирования данных для обучения модели"""
+            def wrapper(self):
+                data, targets = former(self)
+                print("data and targets are ready")
+                print("forming feature with", patch_feature)
+                # Добавим фичи, формируем новый датасет
+                featurized_data = FeaturesBuilder(data, self.features, by_patch=patch_feature).make_features()
+                # Формируем патчи из полученного финального датасета
+                patches = self.__form_patches(featurized_data, targets)
+                return patches
+            return wrapper
+        return wrapper_generator
 
-    @patches_generator
+    @patches_generator(patch_feature=False)
     def _train_window(self) -> tuple:
         """Метод для обрезания общих данных до нужных окон"""
         data = self.data[self.train_index:self.train_index + self.train_window]
         targets = self.targets[self.train_index:self.train_index + self.train_window]
         return data, targets
 
-    @patches_generator
+    @patches_generator(patch_feature=False)
     def _val_window(self) -> tuple:
         """Метод для обрезания общих данных до нужных окон"""
-        # print("data before here", self.data)
-        # print(self.val_index, self.val_window)
         data = self.data[self.val_index:self.val_index + int(self.val_window * self.train_window)]
         targets = self.targets[self.val_index:self.val_index + int(self.val_window * self.train_window)]
         return data, targets
 
-    @patches_generator
+    @patches_generator(patch_feature=True)
     def _test_window(self) -> tuple:
         """Метод для обрезания общих данных до нужных окон"""
         data = self.data[self.test_index:self.test_index + self.test_window]

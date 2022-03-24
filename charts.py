@@ -286,3 +286,38 @@ class WindowsChartBuilder:
 
         plt.legend()
         plt.show()
+
+
+class MarkupsChartBuilder:
+    """Класс для построения графиков
+    разметки"""
+
+    def __init__(self, data, targets) -> None:
+        self.common_data = data.copy()
+        self.common_data["Signal"] = targets["Signal"]
+
+        plt.style.use("seaborn-dark")
+
+        for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
+            plt.rcParams[param] = '#212946'
+        for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
+            plt.rcParams[param] = '0.9'
+
+    def draw(self) -> None:
+        """Метод для вывода графика датасета и его
+        разметки"""
+
+        fig, ax0 = plt.subplots(1, 1, figsize=(13, 3))
+
+        ax0.set_title(f"Markups")
+        ax0.plot(self.common_data["Close"], label="Train")
+        ax0.scatter(self.common_data[self.common_data['Signal'] == 1].index,
+                    self.common_data[self.common_data['Signal'] == 1].Close, c="green", s=9.0, label="Buy")
+        ax0.scatter(self.common_data[self.common_data['Signal'] == -1].index,
+                    self.common_data[self.common_data['Signal'] == -1].Close, c="red", s=9.0, label="Sell")
+        ax0.set_xlabel("Time")
+        ax0.set_ylabel("Price")
+        ax0.grid(color='#2A3459')
+
+        plt.legend()
+        plt.show()

@@ -23,9 +23,9 @@ class FeaturesBuilder:
         # Генерируем фичи и получаем новый датасет
         self.featurized_data = self.make_features()
 
-        # # Если включено отображение фич, рисуем график по разрешенным фичам
-        # if show_features is not None:
-        #     FeaturesChartBuilder(self.featurized_data, show_features).draw()
+        # Если включено отображение фич, рисуем график по разрешенным фичам
+        if show_features is not None:
+            FeaturesChartBuilder(self.featurized_data, show_features).draw()
 
     def make_features(self) -> pd.DataFrame:
         """Метод для формирования фич"""
@@ -33,7 +33,7 @@ class FeaturesBuilder:
             # Сделать фичи отдельно для каждого патча
             return self._make_features_by_patch(self.data)
         else:
-            # Сделать фичи по всему датасету
+            # Сделать фичи сразу по всему датасету
             return self._make_features_by_full_dataset(self.data)
 
     def _make_features_by_patch(self, dataset) -> pd.DataFrame:
@@ -41,7 +41,6 @@ class FeaturesBuilder:
         Необходимо для симуляции расставления фич, как в реальном времени"""
         df_patches_featurized = pd.DataFrame()
 
-        print("before set", dataset.shape)
         # Проходимся по всему обрезанному датасету (окну)
         for index in range(dataset.shape[0]):
             if index + self.patch_size == dataset.shape[0] + 1:
@@ -56,7 +55,6 @@ class FeaturesBuilder:
             # по котоорому модель затем будет делать предсказание
             df_patches_featurized = pd.concat([df_patches_featurized, df_patch_featurized.iloc[-1:]])
 
-        print("final set", df_patches_featurized.shape)
         return dataset
 
     def _make_features_by_full_dataset(self, dataset: pd.DataFrame) -> pd.DataFrame:
