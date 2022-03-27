@@ -6,11 +6,18 @@ def start() -> None:
     """Метод для запуска первоначального сценария"""
 
     token = "ADA-USDT"
-    features = ["open_as_is", "high_as_is", "LF"]#, "low_as_is", "close_as_is"]
-    data_builder = DataBuilder(token, features=features, show_forward=True, show_markup=True, markup_frequency=100)
+    features = ["open_as_is", "high_as_is", "LF"]
+    data_builder = DataBuilder(token, features=features, show_forward=False, show_markup=False, markup_frequency=100)
     print(data_builder.data)
 
-    # model_million = ModelInOut(token, data=data_builder.build())
+    model_million = ModelInOut(
+        token,
+        data_builder.train_generator,
+        data_builder.val_generator,
+        data_builder.test_generator,
+        show_stats=True
+    )
+    model_million.predict()
     # model_million.stats()
     # model_million.predict()
 

@@ -3,9 +3,9 @@
 class VirtualAccount:
     """Класс для хранения данных аккаунта торговца"""
 
-    def __init__(self):
+    def __init__(self, balance=1000):
         # Денежный баланс в USDT
-        self._balance = 1000
+        self._balance = balance
         self.min_balance = 99999
 
         # Число открытых позиций
@@ -63,12 +63,13 @@ class VirtualAccount:
         return total_amount * price + self._balance
 
 
-class VirtualTrader:
+class VirtualMarket:
     """Класс для синтетической торговли по заранее
     подготовленным данным"""
 
-    def __init__(self, account: VirtualAccount):
+    def __init__(self, account: VirtualAccount, commision: float = 0.1):
         self._account = account
+        self.commision = commision
 
     def start_virtual_trade(self, signals: [], prices: []) -> []:
         """Начинаем симуляцию торговли по заранее
@@ -80,7 +81,6 @@ class VirtualTrader:
             ask_price = price
             bid_price = price + price / 100 * 0.1
 
-            # print(type(signals[index]['Signal']), signals[index]['Signal'], len(signals), index, len(prices))
             if signals[index]['Signal'] == 'BUY':
                 # покупаем
                 self._account.create_new_order('ADA', 9.0, bid_price, index)

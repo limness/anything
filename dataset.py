@@ -53,14 +53,11 @@ class DataBuilder:
         self.val_index = 0
         self.test_index = 0
 
-        self.data, self.targets = self._try_load_or_make_dataset() #self.featurized_data,
+        self.data, self.targets = self._try_load_or_make_dataset()
         self.scaler = preprocessing.MinMaxScaler()
         self.train_generator = self._train_window()
         self.val_generator = self._val_window()
         self.test_generator = self._test_window()
-        # print(type(self.train_generator))
-        # print("=====")
-        # print(len(self.train_generator))
 
     def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
@@ -166,7 +163,7 @@ class DataBuilder:
         targets = self.targets[self.val_index:self.val_index + int(self.val_window * self.train_window)]
         return data, targets
 
-    @patches_generator(patch_feature=True)
+    @patches_generator(patch_feature=False)
     def _test_window(self) -> tuple:
         """Метод для обрезания общих данных до нужных окон"""
         data = self.data[self.test_index:self.test_index + self.test_window]

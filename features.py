@@ -34,7 +34,9 @@ class FeaturesBuilder:
             return self._make_features_by_patch(self.data)
         else:
             # Сделать фичи сразу по всему датасету
-            return self._make_features_by_full_dataset(self.data)
+            sss = self._make_features_by_full_dataset(self.data)
+            print("featurized butno w", sss.shape, sss)
+            return sss
 
     def _make_features_by_patch(self, dataset) -> pd.DataFrame:
         """Метод для формирования фич отдельно по каждому патчу
@@ -43,7 +45,7 @@ class FeaturesBuilder:
 
         # Проходимся по всему обрезанному датасету (окну)
         for index in range(dataset.shape[0]):
-            if index + self.patch_size == dataset.shape[0] + 1:
+            if index + self.patch_size == dataset.shape[0] + 0:
                 break
             # Разбиваем окно на отдельный патч
             df_patch = dataset.iloc[index:index + self.patch_size]
@@ -55,6 +57,7 @@ class FeaturesBuilder:
             # по котоорому модель затем будет делать предсказание
             df_patches_featurized = pd.concat([df_patches_featurized, df_patch_featurized.iloc[-1:]])
 
+        print("featurized", df_patches_featurized.shape, df_patches_featurized)
         return dataset
 
     def _make_features_by_full_dataset(self, dataset: pd.DataFrame) -> pd.DataFrame:

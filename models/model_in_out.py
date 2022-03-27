@@ -2,32 +2,23 @@
 from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Flatten
 from tensorflow.keras import Model
-from sklearn import preprocessing
-from sklearn.model_selection import train_test_split
-
-import matplotlib.pyplot as plt
-import pickle
-import pandas as pd
-import numpy as np
-import charts
 
 
 class ModelInOut:
     """Класс для построения модели распознавания
     входов выходов и удержания позиции отдельного токена"""
 
-    def __init__(self, token: str, data: ()) -> None:
+    def __init__(self, token: str, train_generator, val_generator, test_generator, show_stats=False) -> None:
         self.token = token
-        self.x_train = data[0]
-        self.x_test = data[1]
-        self.y_train = data[2]
-        self.y_test = data[3]
-        self.prices = data[4]
-        self.indexes = data[5]
+        self.train_generator = train_generator
+        self.val_generator = val_generator
+        self.test_generator = test_generator
+        self.show_stats = show_stats
 
-        # Построим график по результатам обучения модели
-        self.chart_builder = charts.LearningChartBuilder()
+        # # Построим график по результатам обучения модели
+        # self.chart_builder = charts.LearningChartBuilder()
 
         # Строим архитектуру для модели
         self._build_model()
@@ -37,83 +28,86 @@ class ModelInOut:
 
     def _build_model(self) -> None:
         """Метод для построения архитектуры модели"""
-        input = Input(shape=(10,))
-
-        x = Dense(600, activation='relu')(input)
+        input = Input(shape=(30, 3))
+        x = Flatten()(input)
+        x = Dense(600, activation='relu')(x)
         x = Dropout(0.3)(x)
         x = Dense(500, activation='relu')(x)
         x = Dropout(0.3)(x)
         x = Dense(50, activation='sigmoid')(x)
 
-        output = Dense(3, activation='softmax')(x)
+        output = Dense(2, activation='softmax')(x)
 
         self.model = Model(input, output)
         self.model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['accuracy'])
 
     def _train_model(self) -> None:
         """Метод для тренировки модели"""
-        # history = self.model.fit(
-        #     self.x_train[: - 1500 - 10 - 2],
-        #     self.y_train[: - 1500 - 10 - 2],
-        #     batch_size=64,
-        #     epochs=20,
-        #     validation_data=[self.x_train[-1500:], self.y_train[-1500:]],
-        #     verbose=1,
-        #     shuffle=True
-        # )
-        # # Кинем данные по обучению в график и построим его
-        # self.chart_builder.set_history(history.history)
-        # self.chart_builder.build()
-        # self._evaluate_model()
-        # self.model.save_weights("my_checkpoint")
+        print(len(self.train_generator))
+        print(len(self.train_generator[0]))
+        print(len(self.train_generator[0][0]))
+        print(len(self.train_generator[0][0][0]))
 
-        self.model.load_weights("my_checkpoint")
+        print(len(self.test_generator))
+        print(len(self.test_generator[0]))
+        print(len(self.test_generator[0][0]))
+        print(len(self.test_generator[0][0][0]))
+        self.history = self.model.fit(
+            self.train_generator,
+            # batch_size=64,
+            epochs=20,
+            validation_data=self.val_generator,
+            verbose=1,
+            shuffle=True
+        )
+        self.model.save_weights("my_checkpoint")
+        self.stats()
+        # self.model.load_weights("my_checkpoint")
 
     def _evaluate_model(self) -> None:
         """Метод для проверки модели на тестовых данных"""
-        stats = self.model.evaluate(self.x_test, self.y_test)
+        stats = self.model.evaluate(self.test_generator)
         print('Evaluate:', stats)
 
     def predict(self) -> None:
         """Метод для прогноза цены"""
-        predictions = self.model.predict(self.x_test)
-        true_dim = self.y_test
+        predictions = self.model.predict(self.test_generator)
 
         for index, prediction in enumerate(predictions):
-            print("Прогноз: {A} Правильное: {B}" . format(A=prediction, B=true_dim[index]))
+            print("Прогноз: {A}" . format(A=prediction))
 
-        signs = []
-        for index, signal in enumerate(predictions):
-            signs.append(np.argmax(signal))
-        signs = np.array(signs)
+        # signs = []
+        # for index, signal in enumerate(predictions):
+        #     signs.append(np.argmax(signal))
+        # signs = np.array(signs)
+        #
+        # t_signs = []
+        # for index, signal in enumerate(true_dim):
+        #     t_signs.append(np.argmax(signal))
+        # t_signs = np.array(t_signs)
 
-        t_signs = []
-        for index, signal in enumerate(true_dim):
-            t_signs.append(np.argmax(signal))
-        t_signs = np.array(t_signs)
-
-        print("Total preds",
-              predictions.shape,
-              "Total hold",
-              len(signs[signs == 0]),
-              "Total sell",
-              len(signs[signs == 1]),
-              "Total buy",
-              len(signs[signs == 2]))
-        print("true:")
-        print("Total preds",
-              true_dim.shape,
-              "Total hold",
-              len(t_signs[t_signs == 0]),
-              "Total sell",
-              len(t_signs[t_signs == 1]),
-              "Total buy",
-              len(t_signs[t_signs == 2]))
+        # print("Total preds",
+        #       predictions.shape,
+        #       "Total hold",
+        #       len(signs[signs == 0]),
+        #       "Total sell",
+        #       len(signs[signs == 1]),
+        #       "Total buy",
+        #       len(signs[signs == 2]))
+        # print("true:")
+        # print("Total preds",
+        #       true_dim.shape,
+        #       "Total hold",
+        #       len(t_signs[t_signs == 0]),
+        #       "Total sell",
+        #       len(t_signs[t_signs == 1]),
+        #       "Total buy",
+        #       len(t_signs[t_signs == 2]))
         # print(len(self.prices))
         # print(234324, self.prices[29798:])
 
-        self.trade_builder = TradeChartBuilder(self.token, self.prices, self.indexes, predictions, true_dim)
-        self.trade_builder.build()
+        # self.trade_builder = TradeChartBuilder(self.token, self.prices, self.indexes, predictions, true_dim)
+        # self.trade_builder.build()
 
         # plt.style.use("seaborn-dark")
         #
@@ -138,7 +132,11 @@ class ModelInOut:
 
     def stats(self) -> None:
         """Метод для вывода статистики тренировки модели"""
-        pass
+        self._evaluate_model()
+
+        if self.show_stats:
+            self.chart_builder.set_history(self.history.history)
+            self.chart_builder.build()
 
 # data = yf.download("BTC-USD", interval="5m", start="2020-01-01", end="2020-03-01")
 # print(data)
