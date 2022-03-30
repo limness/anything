@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import trader
 
 
 # class TradeChartBuilder:
@@ -319,5 +318,59 @@ class MarkupsChartBuilder:
         ax0.set_ylabel("Price")
         ax0.grid(color='#2A3459')
 
+        plt.legend()
+        plt.show()
+
+
+class LearningChartBuilder:
+    """Класс для построения графиков
+    обучения нейронной сети"""
+
+    def __init__(self, history) -> None:
+        self.history = history
+
+        plt.style.use("seaborn-dark")
+
+        for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
+            plt.rcParams[param] = '#212946'
+        for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
+            plt.rcParams[param] = '0.9'
+
+    def draw(self) -> None:
+        """Метод для вывода графика"""
+
+        fig, ax0 = plt.subplots(1, 1, figsize=(13, 3))
+
+        ax0.plot(self.history['loss'], label="Loss")
+        ax0.plot(self.history['val_loss'], label="Val Loss")
+        ax0.plot(self.history['binary_accuracy'], label="Accuracy")
+        ax0.plot(self.history['val_binary_accuracy'], label="Val Accuracy")
+
+        plt.legend()
+        plt.show()
+
+
+class BacktestChartBuilder:
+    """Класс для построения графиков
+    бэктеста"""
+
+    def __init__(self, signals, pnl) -> None:
+        self.signals = signals
+        self.pnl = pnl
+
+        plt.style.use("seaborn-dark")
+
+        for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
+            plt.rcParams[param] = '#212946'
+        for param in ['text.color', 'axes.labelcolor', 'xtick.color', 'ytick.color']:
+            plt.rcParams[param] = '0.9'
+
+    def draw(self) -> None:
+        """Метод для вывода графика"""
+
+        fig, ax0 = plt.subplots(1, 1, figsize=(13, 3))
+        fig.suptitle("PNL")
+        ax0.plot(self.signals.index, self.pnl, label="PNL")
+        ax0.set_ylabel("Profit")
         plt.legend()
         plt.show()

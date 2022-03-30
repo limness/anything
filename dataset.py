@@ -101,7 +101,7 @@ class DataBuilder:
             WindowsChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
-        return data, targets# featurized_data, targets
+        return data, targets
 
     def _form_index_windows(self, data: pd.DataFrame) -> None:
         """Метод для формирования индексов окон"""
