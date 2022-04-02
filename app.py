@@ -12,7 +12,27 @@ def start_experiment() -> None:
 
     token = "ADA-USDT"
     features = ["open_as_is", "high_as_is", "LF"]
-    data_builder = DataBuilder(token, features=features, show_forward=False, show_markup=False, markup_frequency=100)
+    data_builder = DataBuilder(
+        token,
+        features=features,
+        show_windows=True,
+        show_markup=False,
+        markup_frequency=100
+    )
+    data_builder.add_window(
+        name="train",
+        size=1200
+    )
+    data_builder.add_window(
+        name="val",
+        size=("train", 0.4)
+    )
+    data_builder.add_window(
+        name="test",
+        size=500
+    )
+    data_builder.compile_windows()
+
     print(data_builder.data)
     #
     model_million = ModelInOut(
@@ -49,16 +69,32 @@ def start_test() -> None:
     data_builder = DataBuilder(
         token,
         features=features,
-        show_forward=False,
-        show_markup=False,
-        markup_frequency=100
+        show_windows=True,
+        show_markup=True,
+        markup_frequency=50
     )
-    model_million = ModelInOut(
-        token,
-        test_generator=data_builder.test_generator,
-        load_model=True
+    data_builder.add_window(
+        name="train",
+        size=1200,
+        features_by_patch
     )
-    model_million.predict()
+    # data_builder.add_window(
+    #     name="val",
+    #     size=("train", 0.4)
+    # )
+    # data_builder.add_window(
+    #     name="test",
+    #     size=500
+    # )
+    data_builder.compile_windows()
+    # print(data_builder.data.shape[0])
+    # print(data_builder.windows)
+    # model_million = ModelInOut(
+    #     token,
+    #     test_generator=data_builder.test_generator,
+    #     load_model=True
+    # )
+    # model_million.predict()
 
 
 if __name__ == '__main__':
