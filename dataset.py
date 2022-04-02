@@ -53,8 +53,9 @@ class DataBuilder:
         self.val_index = 0
         self.test_index = 0
 
-        self.data, self.targets = self._try_load_or_make_dataset()
-        self.scaler = preprocessing.MinMaxScaler()
+        self.data = self._try_load_or_make_dataset()
+        self.targets = self._try_load_or_make_markup(self.data)
+        self.scaler = self._try_load_or_make_scaler()# preprocessing.MinMaxScaler()
         self.train_generator = self._train_window()
         self.val_generator = self._val_window()
         self.test_generator = self._test_window()
@@ -64,10 +65,6 @@ class DataBuilder:
         try:
             # Попробуем загрузить файл из директории
             data = pd.read_csv(f"datasets/{self.token}_.csv")
-            # Попробуем загрузить файл из директории
-            featurized_data = pd.read_csv(f"datasets/{self.token}_featurized_.csv")
-            # Попробуем загрузить файл из директории
-            targets = pd.read_csv(f"datasets/{self.token}_targets_.csv")
         except FileNotFoundError:
             # Файл не найден, необходимо сгенерировать датасет с нуля
             # для этого выгрузим не отформатированные данные из каталога _no_format
@@ -76,32 +73,40 @@ class DataBuilder:
             data = pd.DataFrame(data, columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
             data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
             data = data.set_index("Datetime")
-            # Делаем разметку по всему датасету
-            targets = MarkupBuilder(data, self.markup_frequency, self.show_markup).make_markup()
-            # # Добавим фичи и формируем новый датасет
-            # featurized_data = FeaturesBuilder(data, self.features, self.show_features).make_features()
 
             if self.save_serializer:
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 data.to_csv(f"datasets/{self.token}_.csv")
-                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
-                # featurized_data.to_csv(f"datasets/{self.token}_featurized_.csv")
-                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
-                targets.to_csv(f"datasets/{self.token}_targets_.csv")
 
-        print("Dataset", data)
-        # print("Featurized Dataset", featurized_data)
         # Сформировать окна для модели
         self._form_index_windows(data)
         # Если включено отображение форвардного анализа - выводим график
         if self.show_forward:
-            print("test_index", self.test_index,
-                  "train_index", self.train_index,
-                  "val_index", self.val_index)
             WindowsChartBuilder(self.token, data,
                          self.train_index, self.val_index, self.test_index,
                          self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
-        return data, targets
+        return data
+
+    def _try_load_or_make_markup(self, data) -> ():
+        """Метод для формирования разметки датасета"""
+        try:
+            # Попробуем загрузить файл из директории
+            targets = pd.read_csv(f"datasets/{self.token}_targets_.csv")
+        except FileNotFoundError:
+            # Делаем разметку по всему датасету
+            targets = MarkupBuilder(data, self.markup_frequency, self.show_markup).make_markup()
+
+            if self.save_serializer:
+                # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
+                targets.to_csv(f"datasets/{self.token}_targets_.csv")
+
+        return targets
+
+    def _try_load_or_make_scaler(self) -> ():
+        """Метод для формирования скейлера датасета"""
+        # TODO: Сделать загрузку скейлера
+        scaler = preprocessing.MinMaxScaler()
+        return scaler
 
     def _form_index_windows(self, data: pd.DataFrame) -> None:
         """Метод для формирования индексов окон"""
@@ -124,6 +129,10 @@ class DataBuilder:
             self.train_index += index_offset
             self.val_index += index_offset
             self.test_index += index_offset
+
+        print("test_index", self.test_index,
+              "train_index", self.train_index,
+              "val_index", self.val_index)
 
     def __form_patches(self, data, targets) -> object:
         """Метод для формирования патчей из датасета"""
