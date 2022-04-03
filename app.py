@@ -6,18 +6,19 @@ import os
 from datetime import datetime
 
 
-def create_experiment_directory(experiment_name: str = "") -> None:
+def create_experiment_directory(experiment_name: str = "") -> str:
     """Метод для создания директории нового эксперимента"""
     time_now = datetime.now().strftime("%m%d%Y%H%M%S")
     append_name = f"_{experiment_name}" if experiment_name.strip() != "" else ""
     experiment_name = f"Experiment_{time_now}{append_name}"
     os.makedirs(f"experiments/{experiment_name}")
+    return experiment_name
 
 
 def start_experiment(token, features, experiment_name="") -> None:
     """Метод для запуска первоначального сценария нового эксперимента"""
     # Создаем новую директорию
-    create_experiment_directory()
+    experiment_name = create_experiment_directory()
 
     # Начинаем готовить данные для модели
     data_builder = DataBuilder(
@@ -47,7 +48,7 @@ def start_experiment(token, features, experiment_name="") -> None:
         token,
         data_builder.windows["train"],
         data_builder.windows["val"],
-        data_builder.windows["train"],
+        data_builder.windows["val"],
         y_scaler=data_builder.y_scaler,
         show_stats=True,
         experiment_name=experiment_name
