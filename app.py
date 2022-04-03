@@ -26,7 +26,7 @@ def start_experiment(experiment_name="") -> None:
         features=features,
         show_windows=False,
         show_markup=False,
-        markup_frequency=100
+        markup_frequency=40
     )
     data_builder.add_window(
         name="train",
@@ -46,27 +46,18 @@ def start_experiment(experiment_name="") -> None:
     # Запускаем обучение сети
     model_million = ModelInOut(
         token,
-        data_builder.windows["train"]["Patches"],
-        data_builder.windows["val"]["Patches"],
-        data_builder.windows["test"]["Patches"],
-        show_stats=False,
+        data_builder.windows["train"],
+        data_builder.windows["val"],
+        data_builder.windows["train"],
+        y_scaler=data_builder.y_scaler,
+        show_stats=True,
         experiment_name=experiment_name
     )
-    model_million.predict()
+    # Получаем сигналы
+    signals = model_million.predict()
 
-    # # TODO: Пофиксить весь этот хлам
-    # with open(f'tokens/ADA-USDT.pickle', 'rb') as handle:
-    #     klines_per_day = pickle.load(handle)
-    #
-    # data = pd.DataFrame(np.array(klines_per_day).astype(float)[:5000, :-1],
-    #                     columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
-    # data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
-    # data = data.set_index("Datetime")
-    # data["Signal"] = np.random.choice([-1, 1], data.shape[0])
-    #
-    # print(data)
-
-    backtest = Backtest(signals=data, balance=1000, fix_deal=0.1, commision=0.1)
+    # Запускаем бэктест
+    backtest = Backtest(signals=signals, balance=1000, fix_deal=0.1, commision=0.1)
     backtest.run()
     backtest.show_stats()
     backtest.draw()
@@ -100,5 +91,5 @@ def start_test() -> None:
 
 
 if __name__ == '__main__':
-    start_experiment(experiment_name="Testchenit")
+    start_experiment(experiment_name="Markup_Fix")
     # start_test()

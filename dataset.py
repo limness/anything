@@ -55,12 +55,9 @@ class DataBuilder:
         self.test_index = 0
 
         self.windows = {}
+        self.x_scaler, self.y_scaler = self._try_load_or_make_scaler()
         self.data = self._try_load_or_make_dataset()
         self.targets = self._try_load_or_make_markup(self.data)
-        self.scaler = self._try_load_or_make_scaler()
-        # self.train_generator = self._train_window()
-        # self.val_generator = self._val_window()
-        # self.test_generator = self._test_window()
 
     def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
@@ -80,13 +77,6 @@ class DataBuilder:
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 data.to_csv(f"datasets/{self.token}_.csv")
 
-        # # Сформировать окна для модели
-        # self._form_index_windows(data)
-        # # Если включено отображение форвардного анализа - выводим график
-        # if self.show_forward:
-        #     WindowsChartBuilder(self.token, data,
-        #                  self.train_index, self.val_index, self.test_index,
-        #                  self.train_window, int(self.train_window * self.val_window), self.test_window).draw()
         return data
 
     def _try_load_or_make_markup(self, data) -> ():
@@ -97,18 +87,19 @@ class DataBuilder:
         except FileNotFoundError:
             # Делаем разметку по всему датасету
             targets = MarkupBuilder(data, self.markup_frequency, self.show_markup).make_markup()
-
+            print(targets)
             if self.save_serializer:
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
                 targets.to_csv(f"datasets/{self.token}_targets_.csv")
 
         return targets
 
-    def _try_load_or_make_scaler(self) -> ():
+    def _try_load_or_make_scaler(self) -> tuple:
         """Метод для формирования скейлера датасета"""
         # TODO: Сделать загрузку скейлера
-        scaler = preprocessing.MinMaxScaler()
-        return scaler
+        x_scaler = preprocessing.MinMaxScaler()
+        y_scaler = preprocessing.OneHotEncoder()
+        return x_scaler, y_scaler
 
     def add_window(self, name: str, size: Union[int, tuple], features_by_patch: bool = False):
         """Метод для инициализации нового окна"""
@@ -148,12 +139,13 @@ class DataBuilder:
             end_index = self.windows[key]["Start"] + self.windows[key]["Size"]
             features_by_patch = self.windows[key]["Features"]
             # Формируем данные окна вместе с фичами
-            data, targets = self.__form_window(start_index, end_index, features_by_patch)
-            print(data, targets)
+            data, featurized_data, targets = self.__form_window(start_index, end_index, features_by_patch)
             # Формируем данные патчей внутри окна
-            patches = self.__form_patches(data, targets)
+            patches = self.__form_patches(featurized_data, targets)
             # Создаем новый ключ и записываем данные патча
             self.windows[key]["Patches"] = patches
+            # Создаем новый ключ и записываем данные обучения
+            self.windows[key]["Data"] = data[self.patch_size:]
         # Если включено отображение окон
         if self.show_windows:
             self._show_windows()
@@ -166,18 +158,39 @@ class DataBuilder:
         """Метод для обрезания общих данных до нужных окон"""
         data = self.data[start_index:end_index]
         targets = self.targets[start_index:end_index]
+        targets = self.__scaler_y(targets)
         # Формируем новый датасет, расставляем фичи
-        featurized_data = FeaturesBuilder(data, self.features, by_patch=features_by_patch).make_features()
-        return featurized_data, targets
+        featurized_data = FeaturesBuilder(
+            data,
+            self.features,
+            by_patch=features_by_patch,
+            patch_size=self.patch_size
+        ).make_features()
+        featurized_data = self.__scaler_x(featurized_data)
+        return data, featurized_data, targets
 
     def __form_patches(self, data, targets) -> tf.keras.preprocessing.sequence.TimeseriesGenerator:
         """Метод для формирования патчей из датасета"""
         # Формируем патчи из полученного финального датасета
         patches = tf.keras.preprocessing.sequence.TimeseriesGenerator(
-            data=data.to_numpy(), targets=targets.to_numpy(), length=self.patch_size,
+            data=data, targets=targets, length=self.patch_size,
             sampling_rate=1, batch_size=64
         )
+        print("patch and data", len(patches), len(patches[0]), len(patches[0][0]),
+              len(patches[0][0][0]), len(patches[0][0][0][0]), len(patches[0][0][0][0]), self.patch_size, data.shape)
         return patches
+
+    def __scaler_x(self, data: pd.DataFrame) -> np.array:
+        """Метод для скалирования входных данных"""
+        data = self.x_scaler.fit_transform(data)
+        return data
+
+    def __scaler_y(self, data: pd.DataFrame) -> np.array:
+        """Метод для скалирования входных данных"""
+        # print("aaaa", data)
+        data = self.y_scaler.fit_transform(data).toarray()
+        # print("bbbb", data)
+        return data
 
     def _read_dataset_from_file(self) -> np.array:
         """Метод для чтения данных с биржи из файла"""

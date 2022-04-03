@@ -1,10 +1,13 @@
 import os
 from datetime import datetime
+
+import pandas as pd
 from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras import Model
+from sklearn.preprocessing import OneHotEncoder
 from charts import LearningChartBuilder
 
 
@@ -13,7 +16,7 @@ class ModelInOut:
     входов выходов и удержания позиции отдельного токена"""
 
     def __init__(self, token: str, train_generator=None, val_generator=None, test_generator=None,
-                 experiment_name="", show_stats=False, load_model=False) -> None:
+                 y_scaler=None, experiment_name="", show_stats=False, load_model=False) -> None:
         self.token = token
         self.load_model = load_model
         self.train_generator = train_generator
@@ -21,6 +24,7 @@ class ModelInOut:
         self.test_generator = test_generator
         self.show_stats = show_stats
         self.experiment_name = experiment_name
+        self.y_scaler = y_scaler
         self.history = {}
 
         # Строим архитектуру для модели
@@ -52,10 +56,10 @@ class ModelInOut:
         except Exception as ex:
             """Метод для тренировки модели"""
             self.history = self.model.fit(
-                self.train_generator,
+                self.train_generator["Patches"],
                 batch_size=64,
-                epochs=20,
-                validation_data=self.val_generator,
+                epochs=240,
+                validation_data=self.val_generator["Patches"],
                 verbose=1,
                 shuffle=True
             )
@@ -65,17 +69,22 @@ class ModelInOut:
 
     def _evaluate_model(self) -> None:
         """Метод для проверки модели на тестовых данных"""
-        stats = self.model.evaluate(self.test_generator)
+        stats = self.model.evaluate(self.test_generator["Patches"])
         print('Evaluate:', stats)
 
-    def predict(self) -> None:
+    def predict(self) -> pd.DataFrame:
         """Метод для прогноза цены"""
         assert self.test_generator is not None, \
             "Test generator is empty!"
-
-        predictions = self.model.predict(self.test_generator)
-        for index, prediction in enumerate(predictions):
-            print("Прогноз: {A}" . format(A=prediction))
+        predictions = self.model.predict(self.test_generator["Patches"])
+        print(predictions.shape, self.test_generator["Data"].shape)
+        predictions = self.y_scaler.inverse_transform(predictions).flatten()
+        # for index, prediction in enumerate(predictions):
+        #     print("Прогноз: {A}" . format(A=prediction))
+        signals = pd.DataFrame(predictions, columns=["Signal"], index=self.test_generator["Data"].index)
+        signals = pd.concat([self.test_generator["Data"], signals], axis=1)
+        print("signals", signals)
+        return signals
 
     def stats(self) -> None:
         """Метод для вывода статистики тренировки модели"""
