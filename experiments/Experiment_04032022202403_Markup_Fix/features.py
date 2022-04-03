@@ -35,11 +35,9 @@ class FeaturesBuilder:
             # Формирование фич по патчам не включено,
             # формируем локальные фичи как глобальные по всему датасету
             local_featurized_data = self._make_local_features(self.data)
-        print("concat", global_featurized_data.shape, local_featurized_data.shape)
         featurized_data = pd.concat([global_featurized_data, local_featurized_data], axis=1)
         # Заменяем наниты на нули
         featurized_data = featurized_data.fillna(0)
-        print("after concat", featurized_data)
         return featurized_data
 
     def _make_features_by_patch(self, dataset) -> pd.DataFrame:
@@ -60,12 +58,6 @@ class FeaturesBuilder:
             # необходимо из всего патча оставить лишь последний бар
             # по котоорому модель затем будет делать предсказание
             df_patches_featurized = pd.concat([df_patches_featurized, df_patch_featurized.iloc[-1:]])
-        # print("df_patches_featurized[:self.patch_size]", df_patches_featurized[:self.patch_size])
-        # Так как мы вырезали данные и сократили общий сет, необходимо скопировать
-        # и вставить повторные данные TimeSeriesGenerator их все равно потом вырежет
-        # df_patches_featurized = pd.concat([df_patches_featurized[:self.patch_size], df_patches_featurized])
-        print("after", df_patches_featurized.shape)
-
         return df_patches_featurized
 
     def _make_global_features(self, dataset: pd.DataFrame) -> pd.DataFrame:
@@ -103,10 +95,8 @@ class FeaturesBuilder:
         if "LF" in self.features:
             lf_window = self.features_args.get("LF_window", 40)
             df["LF" + str(lf_window)] = FeaturesBuilder.butter_lowpass_filter(dataset["Close"], fs=lf_window)
-
         # Заменяем наниты на нули
         df = df.fillna(0)
-
         return df
 
     @staticmethod

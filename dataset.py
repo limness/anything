@@ -5,7 +5,7 @@ import tensorflow as tf
 from typing import Union
 from sklearn import preprocessing
 from charts import WindowsChartBuilder
-from features import FeaturesBuilder
+from experiments.Experiment_04032022202403_Markup_Fix.features import FeaturesBuilder
 from markups import MarkupBuilder
 
 
@@ -176,8 +176,6 @@ class DataBuilder:
             data=data, targets=targets, length=self.patch_size,
             sampling_rate=1, batch_size=64
         )
-        print("patch and data", len(patches), len(patches[0]), len(patches[0][0]),
-              len(patches[0][0][0]), len(patches[0][0][0][0]), len(patches[0][0][0][0]), self.patch_size, data.shape)
         return patches
 
     def __scaler_x(self, data: pd.DataFrame) -> np.array:
@@ -187,9 +185,7 @@ class DataBuilder:
 
     def __scaler_y(self, data: pd.DataFrame) -> np.array:
         """Метод для скалирования входных данных"""
-        # print("aaaa", data)
         data = self.y_scaler.fit_transform(data).toarray()
-        # print("bbbb", data)
         return data
 
     def _read_dataset_from_file(self) -> np.array:
@@ -197,93 +193,3 @@ class DataBuilder:
         with open(f'tokens/{self.token}.pickle', 'rb') as handle:
             klines_per_day = pickle.load(handle)
         return np.array(klines_per_day).astype(float)
-
-    def build(self) -> ():
-        """Метод для чтения данных с биржи из файла"""
-
-        # Загрузим данные
-        # Определим сигналы
-        # Определим фичи
-        # Нормализуем данные
-        # Сплит данных
-
-        self.get_signals(percent=0.8, candles=self.data)
-        # Получаем данные по открытиям свечи
-        # prices = [float(candle[1]) for candle in self.data[:]]
-
-        # # Получаем все сигналы по функции
-        # self.signals = self.get_signals(percent=1.8, price_history=prices)
-        #
-        # self.x = []
-        # self.y = []
-        #
-        # old_train_x = 10
-        #
-        # self.data = np.array(self.data)
-        #
-        # open = self.data[:, 1].astype(float)
-        # open = self.scaler.fit_transform(open.reshape(-1, 1)).flatten()
-        #
-        # self.signals = self._signals_normalization(self.signals)
-        #
-        # new_signals = [{'Type': 'HOLD', 'Start': index, 'Price': price} for index, price in enumerate(prices)]
-        #
-        # for index_main, signal in enumerate(self.signals):
-        #     new_signals[signal['Start']]['Type'] = signal['Type']
-        #
-        # self.signals = new_signals
-        #
-        # # Построим график по входным данным обучения
-        # self.trade_builder = SignalsChartBuilder(self.token, self.data, self.signals)
-        # self.trade_builder.build()
-        #
-        # # Делаем up sampling, расширение данных
-        # # Иначе сеть проглотит слишком неравномерное количество равных данных
-        # len_max = len([item for item in self.signals if item['Type'] == 'HOLD'])
-        #
-        # new_arr_sell = [item for item in self.signals if item['Type'] == 'SELL']
-        # new_arr_sell *= len_max // len(new_arr_sell)
-        #
-        # new_arr_buy = [item for item in self.signals if item['Type'] == 'BUY']
-        # new_arr_buy *= len_max // len(new_arr_buy)
-        #
-        # self.signals.extend(new_arr_buy)
-        # self.signals.extend(new_arr_sell)
-        #
-        # indexes = []
-        #
-        # for signal in self.signals:
-        #     if signal['Start'] <= old_train_x:
-        #         continue
-        #
-        #     if signal['Type'] == 'BUY':
-        #         y_binary = [0, 0, 1]
-        #     elif signal['Type'] == 'SELL':
-        #         y_binary = [0, 1, 0]
-        #     else:
-        #         y_binary = [1, 0, 0]
-        #
-        #     # Входными данными для X являются данные по свечам
-        #     # с момента сигнала и все 5 предыдущих свечей
-        #     self.x.append(open[signal['Start'] - old_train_x:signal['Start']])
-        #     self.y.append(y_binary)
-        #     indexes.append(signal['Start'])
-        #
-        # self.x = np.array(self.x)
-        # self.y = np.array(self.y)
-        #
-        # # TODO: Тестовые данные просачиваются в тренировочные
-        # indexes_train, \
-        # indexes_test, \
-        # x_train, \
-        # x_test, \
-        # y_train, \
-        # y_test = train_test_split(
-        #     indexes,
-        #     self.x,
-        #     self.y,
-        #     test_size=0.20,
-        #     shuffle=True
-        # )
-        # print('indexes_test', indexes_test)
-        # return x_train, x_test[old_train_x + 2:], y_train, y_test[old_train_x + 2:], prices, indexes_test[old_train_x + 2:]
