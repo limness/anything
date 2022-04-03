@@ -245,14 +245,6 @@ class WindowsChartBuilder:
         self.token = token
         self.windows = windows
 
-        # self.train_index = train_index
-        # self.val_index = val_index
-        # self.test_index = test_index
-        #
-        # self.train_window = train_window
-        # self.val_window = val_window
-        # self.test_window = test_window
-
         plt.style.use("seaborn-dark")
 
         for param in ['figure.facecolor', 'axes.facecolor', 'savefig.facecolor']:
@@ -274,14 +266,6 @@ class WindowsChartBuilder:
             end_index = item["Start"] + item["Size"]
             ax0.plot(self.data.index[start_index:end_index],
                      self.data["Close"][start_index:end_index], label=key)
-        # ax0.plot(self.data.index[self.train_index:self.train_index + self.train_window],
-        #          self.data["Close"][self.train_index:self.train_index + self.train_window], label="Train")
-        #
-        # ax0.plot(self.data.index[self.val_index:self.val_index + self.val_window],
-        #          self.data["Close"][self.val_index:self.val_index + self.val_window], label="Val")
-        #
-        # ax0.plot(self.data.index[self.test_index:self.test_index + self.test_window],
-        #          self.data["Close"][self.test_index:self.test_index + self.test_window], label="Test")
 
         ax0.set_xlabel("Time")
         ax0.set_ylabel("Price")
@@ -358,9 +342,9 @@ class BacktestChartBuilder:
     """Класс для построения графиков
     бэктеста"""
 
-    def __init__(self, signals, pnl) -> None:
+    def __init__(self, signals, stats) -> None:
         self.signals = signals
-        self.pnl = pnl
+        self.stats = stats
 
         plt.style.use("seaborn-dark")
 
@@ -371,10 +355,26 @@ class BacktestChartBuilder:
 
     def draw(self) -> None:
         """Метод для вывода графика"""
+        fig, (ax0, ax1, ax2) = plt.subplots(3, 1, figsize=(13, 3), sharex=True)
 
-        fig, ax0 = plt.subplots(1, 1, figsize=(13, 3))
-        fig.suptitle("PNL")
-        ax0.plot(self.signals.index, self.pnl, label="PNL")
+        # Формируем график прибыли
+        ax0.set_title("PNL")
+        ax0.plot(self.signals.index, self.stats["PNL"], label="PNL")
         ax0.set_ylabel("Profit")
+
+        # Формируем общий график тренда и сделки на нем
+        ax1.set_title("Deals")
+        ax1.plot(self.signals.index, self.signals["Open"], label="Real Trend")
+        ax1.scatter(self.signals[self.signals['Signal'] == 1].index,
+                    self.signals[self.signals['Signal'] == 1].Close, c="green", s=9.0, label="Buy")
+        ax1.scatter(self.signals[self.signals['Signal'] == -1].index,
+                    self.signals[self.signals['Signal'] == -1].Close, c="red", s=9.0, label="Sell")
+        ax1.set_ylabel("Price")
+
+        # Формируем подграфик сигналов
+        ax2.set_title("Signals")
+        ax2.plot(self.signals.index, self.signals["Signal"], label="Signals")
+        ax2.set_ylabel("Signal")
+
         plt.legend()
         plt.show()

@@ -81,7 +81,7 @@ class VirtualMarket:
         заданным значениям"""
 
         # Будем вести логи PNL в течении всей торговли
-        stats = []
+        stats = {"PNL": []}
         for index, row in self.signals.iterrows():
             ask_price = row["Open"]
             bid_price = row["Open"] + row["Open"] / 100 * 0.001
@@ -92,7 +92,7 @@ class VirtualMarket:
             # продаем
             elif row['Signal'] == -1:
                 self._account.close_all_orders('ADA', ask_price, self.commision)
-            stats.append(self._account.get_summary_balance(ask_price))
+            stats["PNL"].append(self._account.get_summary_balance(ask_price))
         # print("Total balance: {A} Min Balance: {B}".format(
         #     A=self._account.get_summary_balance(ask_price),
         #     B=self._account.min_balance)
@@ -109,7 +109,7 @@ class Backtest:
         self.commision = commision
         self.balance = balance
         self.fix_deal = fix_deal
-        self.pnl = []
+        self.stats = {}
 
     def run(self) -> None:
         """Запускаем торговлю"""
@@ -117,9 +117,9 @@ class Backtest:
         account = VirtualAccount(balance=self.balance, fix_deal=self.fix_deal)
         # Запускаем игру аккаунта на рынке
         market = VirtualMarket(self.signals, account, self.commision)
-        self.pnl = market.start_virtual_trade()
+        self.stats = market.start_virtual_trade()
 
-    def stats(self) -> None:
+    def show_stats(self) -> None:
         """Показываем общую статистику проведения бэктеста"""
         print("+" * 10 + "[ Backtest Anything ]" + "+" * 10)
         print("В разработке...")
@@ -127,4 +127,4 @@ class Backtest:
 
     def draw(self) -> None:
         """Показываем график торговли"""
-        BacktestChartBuilder(self.signals, self.pnl).draw()
+        BacktestChartBuilder(self.signals, self.stats).draw()

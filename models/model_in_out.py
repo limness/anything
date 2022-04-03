@@ -1,4 +1,5 @@
-
+import os
+from datetime import datetime
 from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
@@ -12,13 +13,14 @@ class ModelInOut:
     входов выходов и удержания позиции отдельного токена"""
 
     def __init__(self, token: str, train_generator=None, val_generator=None, test_generator=None,
-                 show_stats=False, load_model=False) -> None:
+                 experiment_name="", show_stats=False, load_model=False) -> None:
         self.token = token
         self.load_model = load_model
         self.train_generator = train_generator
         self.val_generator = val_generator
         self.test_generator = test_generator
         self.show_stats = show_stats
+        self.experiment_name = experiment_name
         self.history = {}
 
         # Строим архитектуру для модели
@@ -33,8 +35,6 @@ class ModelInOut:
         x = Flatten()(input)
         x = Dense(200, activation='relu')(x)
         x = Dropout(0.3)(x)
-        # x = Dense(500, activation='relu')(x)
-        # x = Dropout(0.3)(x)
         x = Dense(50, activation='sigmoid')(x)
 
         output = Dense(2, activation='softmax')(x)
@@ -59,7 +59,8 @@ class ModelInOut:
                 verbose=1,
                 shuffle=True
             )
-            self.model.save_weights("my_checkpoint.h5")
+            print(self.experiment_name)
+            self.model.save_weights(f"experiments/{self.experiment_name}/model.h5")
             self.stats()
 
     def _evaluate_model(self) -> None:
