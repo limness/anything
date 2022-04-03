@@ -10,7 +10,7 @@ class FeaturesBuilder:
     def __init__(self, data, features=None, show_features=None, features_args=None,
                  by_patch=False, patch_size=50, serializer="pkl") -> None:
         if features is None:
-            features = ["open_as_is", "high_as_is", "low_as_is", "close_as_is"]
+            features = ("open_as_is", "high_as_is", "low_as_is", "close_as_is")
         if features_args is None:
             features_args = {}
         self.data = data
@@ -20,23 +20,23 @@ class FeaturesBuilder:
         self.by_patch = by_patch
         self.patch_size = patch_size
 
-        # Генерируем фичи и получаем новый датасет
-        self.featurized_data = self.make_features()
-
         # Если включено отображение фич, рисуем график по разрешенным фичам
         if show_features is not None:
             FeaturesChartBuilder(self.featurized_data, show_features).draw()
 
     def make_features(self) -> pd.DataFrame:
         """Метод для формирования фич"""
+        # Формируем глобальные фичи
+        global_featurized_data = self._make_global_features(self.data)
         if self.by_patch:
-            # Сделать фичи отдельно для каждого патча
-            return self._make_features_by_patch(self.data)
+            # Добавляем локальные фичи
+            local_featurized_data = self._make_features_by_patch(self.data)
         else:
-            # Сделать фичи сразу по всему датасету
-            sss = self._make_features_by_full_dataset(self.data)
-            print("featurized butno w", sss.shape)
-            return sss
+            # Формирование фич по патчам не включено,
+            # формируем локальные фичи как глобальные по всему датасету
+            local_featurized_data = self._make_local_features(self.data)
+        featurized_data = pd.concat([global_featurized_data, local_featurized_data], axis=1)
+        return featurized_data
 
     def _make_features_by_patch(self, dataset) -> pd.DataFrame:
         """Метод для формирования фич отдельно по каждому патчу
@@ -50,19 +50,20 @@ class FeaturesBuilder:
             # Разбиваем окно на отдельный патч
             df_patch = dataset.iloc[index:index + self.patch_size]
             # Подаем патч в метод для формирования фич
-            df_patch_featurized = self._make_features_by_full_dataset(df_patch)
+            df_patch_featurized = self._make_local_features(df_patch)
 
             # Так как мы пытаемся симулировать прогноз в реальной жизни
             # необходимо из всего патча оставить лишь последний бар
             # по котоорому модель затем будет делать предсказание
             df_patches_featurized = pd.concat([df_patches_featurized, df_patch_featurized.iloc[-1:]])
 
-        print("featurized", df_patches_featurized.shape)
         return dataset
 
-    def _make_features_by_full_dataset(self, dataset: pd.DataFrame) -> pd.DataFrame:
-        """Метод для формирования фич по всему датасету"""
-        df = pd.DataFrame()
+    def _make_global_features(self, dataset: pd.DataFrame) -> pd.DataFrame:
+        """Метод для формирования глобальных фич для датасета.
+        Глобальные фичи - фичи которые формируются по прошлому или
+        по текущим значениям, не зависят от будущего"""
+        df = pd.DataFrame(index=dataset.index)
 
         # Добавляем параметр открытия цены
         if "open_as_is" in self.features:
@@ -80,6 +81,12 @@ class FeaturesBuilder:
         if "close_as_is" in self.features:
             df["Close"] = dataset["Close"]
 
+        return df
+
+    def _make_local_features(self, dataset: pd.DataFrame) -> pd.DataFrame:
+        """Метод для формирования локальных фич для датасета.
+        Локальные фичи - фичи, которые сильно зависят от данных в будущем"""
+        df = pd.DataFrame(index=dataset.index)
         # Добавляем параметр фильтра, используя цену закрытия
         if "LF" in self.features:
             lf_window = self.features_args.get("LF_window", 30)
