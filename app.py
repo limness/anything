@@ -18,7 +18,7 @@ def create_experiment_directory(experiment_name: str = "") -> str:
 def start_experiment(token, features, experiment_name="") -> None:
     """Метод для запуска первоначального сценария нового эксперимента"""
     # Создаем новую директорию
-    experiment_name = create_experiment_directory()
+    experiment_name = create_experiment_directory(experiment_name)
 
     # Начинаем готовить данные для модели
     data_builder = DataBuilder(
@@ -26,7 +26,8 @@ def start_experiment(token, features, experiment_name="") -> None:
         features=features,
         show_windows=False,
         show_markup=False,
-        markup_frequency=40
+        markup_frequency=40,
+        save_scaler=experiment_name
     )
     data_builder.add_window(
         name="train",
@@ -51,13 +52,19 @@ def start_experiment(token, features, experiment_name="") -> None:
         data_builder.windows["val"],
         y_scaler=data_builder.y_scaler,
         show_stats=True,
-        experiment_name=experiment_name
+        save_model=experiment_name
     )
     # Получаем сигналы
     signals = model_million.predict()
 
     # Запускаем бэктест
-    backtest = Backtest(signals=signals, balance=1000, fix_deal=0.1, commision=0.1)
+    backtest = Backtest(
+        signals=signals,
+        balance=1000,
+        fix_deal=0.1,
+        commision=0.1,
+        save_stats=experiment_name
+    )
     backtest.run()
     backtest.show_stats()
     backtest.draw()
@@ -72,7 +79,8 @@ def start_test(token, features, experiment_name="") -> None:
         features=features,
         show_windows=True,
         show_markup=False,
-        markup_frequency=50
+        markup_frequency=50,
+        load_scaler=experiment_name
     )
     data_builder.add_window(
         name="test",
@@ -86,6 +94,7 @@ def start_test(token, features, experiment_name="") -> None:
         token,
         test_generator=data_builder.windows["test"],
         y_scaler=data_builder.y_scaler,
+        load_model=experiment_name
     )
     # Получаем сигналы
     signals = model_million.predict()
@@ -101,7 +110,7 @@ if __name__ == '__main__':
 
     token = "ADA-USDT"
     features = ["open_as_is", "high_as_is", "LF"]
-    experiment_name = "Markup_Fix"
+    experiment_name = "Experiment_04042022214955_Markup_Fix" #Experiment_04042022214955_Markup_Fix
 
-    start_experiment(token, features, experiment_name)
-    # start_test(token, features, experiment_name)
+    # start_experiment(token, features, experiment_name)
+    start_test(token, features, experiment_name)

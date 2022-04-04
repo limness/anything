@@ -16,14 +16,14 @@ class ModelInOut:
     входов выходов и удержания позиции отдельного токена"""
 
     def __init__(self, token: str, train_generator=None, val_generator=None, test_generator=None,
-                 y_scaler=None, experiment_name="", show_stats=False, load_model=False) -> None:
+                 y_scaler=None, load_model=None, save_model=None, show_stats=False) -> None:
         self.token = token
         self.load_model = load_model
+        self.save_model = save_model
         self.train_generator = train_generator
         self.val_generator = val_generator
         self.test_generator = test_generator
         self.show_stats = show_stats
-        self.experiment_name = experiment_name
         self.y_scaler = y_scaler
         self.history = {}
 
@@ -47,14 +47,13 @@ class ModelInOut:
         self.model.compile(optimizer="adam", loss='categorical_crossentropy', metrics=['binary_accuracy'])
 
     def _train_model(self) -> None:
-        try:
-            # TODO: Придумать иное решение
-            # Если загрузка модели не установлена, искуственно вызовем except
-            if not self.load_model:
-                self.model.load_weights("nope")
-            self.model.load_weights("my_checkpoint.h5")
-        except Exception as ex:
-            """Метод для тренировки модели"""
+        """Метод для запуска обучения или загрузки весов модели"""
+        assert self.load_model is not None or self.save_model is not None, \
+            "Save/Load directory is empty!"
+        if self.load_model is not None:
+            self.model.load_weights(f"experiments/{self.load_model}/model.h5")
+            print("load model")
+        else:
             self.history = self.model.fit(
                 self.train_generator["Patches"],
                 batch_size=64,
@@ -63,8 +62,7 @@ class ModelInOut:
                 verbose=1,
                 shuffle=True
             )
-            print(self.experiment_name)
-            self.model.save_weights(f"experiments/{self.experiment_name}/model.h5")
+            self.model.save_weights(f"experiments/{self.save_model}/model.h5")
             self.stats()
 
     def _evaluate_model(self) -> None:
@@ -77,13 +75,9 @@ class ModelInOut:
         assert self.test_generator is not None, \
             "Test generator is empty!"
         predictions = self.model.predict(self.test_generator["Patches"])
-        print(predictions.shape, self.test_generator["Data"].shape)
         predictions = self.y_scaler.inverse_transform(predictions).flatten()
-        # for index, prediction in enumerate(predictions):
-        #     print("Прогноз: {A}" . format(A=prediction))
         signals = pd.DataFrame(predictions, columns=["Signal"], index=self.test_generator["Data"].index)
         signals = pd.concat([self.test_generator["Data"], signals], axis=1)
-        print("signals", signals)
         return signals
 
     def stats(self) -> None:

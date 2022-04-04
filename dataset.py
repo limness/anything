@@ -102,6 +102,7 @@ class DataBuilder:
         if self.load_scaler is not None:
             x_scaler = joblib.load(f"experiments/{self.load_scaler}/x_scaler")
             y_scaler = joblib.load(f"experiments/{self.load_scaler}/y_scaler")
+            print("load scaler")
         else:
             x_scaler = preprocessing.MinMaxScaler()
             y_scaler = preprocessing.OneHotEncoder()
@@ -196,9 +197,9 @@ class DataBuilder:
     def __scaler_y(self, data: pd.DataFrame) -> np.array:
         """Метод для скалирования входных данных"""
         if self.load_scaler is not None:
-            data = self.y_scaler.transform(data)
+            data = self.y_scaler.transform(data).toarray()
         else:
-            data = self.y_scaler.fit_transform(data)
+            data = self.y_scaler.fit_transform(data).toarray()
             joblib.dump(self.y_scaler, f"experiments/{self.save_scaler}/y_scaler")
         return data
 

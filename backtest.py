@@ -25,10 +25,8 @@ class VirtualAccount:
 
     def create_new_order(self, token: str, price: float, commision: float, time: datetime) -> None:
         """Создаем новую позицию на аккаунте"""
-
         if token in [item['Token'] for item in self._order_book]:
             return
-
         self._order_book.append({
             'Token': token,
             'Amount': self.fix_amount,
@@ -44,13 +42,6 @@ class VirtualAccount:
         for token in self._order_book:
             total_amount += token['Amount']
         self._order_book.clear()
-        # index = 0
-        # while index < len(self._order_book):
-        #     if self._order_book[index]['Token'] == token:
-        #         total_amount += self._order_book[index]['Amount']
-        #         del self._order_book[index]
-        #         continue
-        #     index += 1
         self._balance += (total_amount * price) - (total_amount * price) / 100 * commision
 
     def get_order_book(self) -> []:
@@ -87,16 +78,11 @@ class VirtualMarket:
             bid_price = row["Open"] + row["Open"] / 100 * 0.001
             # покупаем
             if row['Signal'] == 1:
-                # print("sue", index)
                 self._account.create_new_order('ADA', bid_price, self.commision, index)
             # продаем
             elif row['Signal'] == -1:
                 self._account.close_all_orders('ADA', ask_price, self.commision)
             stats["PNL"].append(self._account.get_summary_balance(ask_price))
-        # print("Total balance: {A} Min Balance: {B}".format(
-        #     A=self._account.get_summary_balance(ask_price),
-        #     B=self._account.min_balance)
-        # )
         return stats
 
 
@@ -104,11 +90,13 @@ class Backtest:
     """Класс для синтетической торговли по заранее
     подготовленным данным"""
 
-    def __init__(self, signals: pd.DataFrame, balance: float, fix_deal: float, commision: float = 0.1):
+    def __init__(self, signals: pd.DataFrame, balance: float,
+                 fix_deal: float, commision: float = 0.1, save_stats=None):
         self.signals = signals
         self.commision = commision
         self.balance = balance
         self.fix_deal = fix_deal
+        self.save_stats = save_stats
         self.stats = {}
 
     def run(self) -> None:
