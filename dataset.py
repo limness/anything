@@ -7,6 +7,7 @@ from sklearn import preprocessing
 from charts import WindowsChartBuilder
 from features import FeaturesBuilder
 from markups import MarkupBuilder
+import joblib
 
 
 class DataBuilder:
@@ -31,9 +32,9 @@ class DataBuilder:
     """
 
     def __init__(self, token: str, train_window=None, val_window=0.4, test_window=None,
-                 features=None, save_serializer=False, serializer="csv",
-                 patch_size=30, markup_frequency=10.0, show_features=None, show_windows=False, show_markup=False,
-                 embed_train=False, from_end=True, step_window=500) -> None:
+                 features=None, save_serializer=False, serializer="csv", patch_size=30,
+                 markup_frequency=10.0, show_features=None, show_windows=False, show_markup=False,
+                 embed_train=False, from_end=True, step_window=500, save_scaler=None, load_scaler=None) -> None:
         self.token = token
         self.patch_size = patch_size
         self.features = features
@@ -46,6 +47,8 @@ class DataBuilder:
         self.embed_train = embed_train
         self.step_window = step_window
         self.from_end = from_end
+        self.save_scaler = save_scaler
+        self.load_scaler = load_scaler
 
         self.train_window = train_window
         self.val_window = val_window
@@ -96,9 +99,12 @@ class DataBuilder:
 
     def _try_load_or_make_scaler(self) -> tuple:
         """Метод для формирования скейлера датасета"""
-        # TODO: Сделать загрузку скейлера
-        x_scaler = preprocessing.MinMaxScaler()
-        y_scaler = preprocessing.OneHotEncoder()
+        if self.load_scaler is not None:
+            x_scaler = joblib.load(f"experiments/{self.load_scaler}/x_scaler")
+            y_scaler = joblib.load(f"experiments/{self.load_scaler}/y_scaler")
+        else:
+            x_scaler = preprocessing.MinMaxScaler()
+            y_scaler = preprocessing.OneHotEncoder()
         return x_scaler, y_scaler
 
     def add_window(self, name: str, size: Union[int, tuple], features_by_patch: bool = False):
@@ -180,12 +186,20 @@ class DataBuilder:
 
     def __scaler_x(self, data: pd.DataFrame) -> np.array:
         """Метод для скалирования входных данных"""
-        data = self.x_scaler.fit_transform(data)
+        if self.load_scaler is not None:
+            data = self.x_scaler.transform(data)
+        else:
+            data = self.x_scaler.fit_transform(data)
+            joblib.dump(self.x_scaler, f"experiments/{self.save_scaler}/x_scaler")
         return data
 
     def __scaler_y(self, data: pd.DataFrame) -> np.array:
         """Метод для скалирования входных данных"""
-        data = self.y_scaler.fit_transform(data).toarray()
+        if self.load_scaler is not None:
+            data = self.y_scaler.transform(data)
+        else:
+            data = self.y_scaler.fit_transform(data)
+            joblib.dump(self.y_scaler, f"experiments/{self.save_scaler}/y_scaler")
         return data
 
     def _read_dataset_from_file(self) -> np.array:
