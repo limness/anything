@@ -20,8 +20,10 @@ class FeaturesBuilder:
         self.by_patch = by_patch
         self.patch_size = patch_size
 
+        print(show_features)
         # Если включено отображение фич, рисуем график по разрешенным фичам
         if show_features is not None:
+            # print("sue")
             FeaturesChartBuilder(self.featurized_data, show_features).draw()
 
     def make_features(self) -> pd.DataFrame:
@@ -81,6 +83,10 @@ class FeaturesBuilder:
         # Добавляем параметр закрытия цены
         if "close_as_is" in self.features:
             df["Close"] = dataset["Close"]
+
+        # Добавляем параметр закрытия цены
+        if "open_derivate" in self.features:
+            df["Open"] = dataset["Open"].diff()
 
         # Заменяем наниты на нули
         df = df.fillna(0)

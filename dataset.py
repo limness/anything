@@ -102,7 +102,6 @@ class DataBuilder:
         if self.load_scaler is not None:
             x_scaler = joblib.load(f"experiments/{self.load_scaler}/x_scaler")
             y_scaler = joblib.load(f"experiments/{self.load_scaler}/y_scaler")
-            print("load scaler")
         else:
             x_scaler = preprocessing.MinMaxScaler()
             y_scaler = preprocessing.OneHotEncoder()
@@ -118,7 +117,7 @@ class DataBuilder:
             # и получаем новый размер умножая на коэффициент
             size = int(self.windows[size[0]]["Size"] * size[1])
         # Конвертнем словарь в список
-        windows = list(self.windows.keys()) # [-1]
+        windows = list(self.windows.keys())
         if len(windows) > 0:
             # Получаем последнее добавленное окно
             last_window = self.windows[windows[-1]]
@@ -171,7 +170,8 @@ class DataBuilder:
             data,
             self.features,
             by_patch=features_by_patch,
-            patch_size=self.patch_size
+            patch_size=self.patch_size,
+            show_features=self.show_features
         ).make_features()
         featurized_data = self.__scaler_x(featurized_data)
         return data, featurized_data, targets

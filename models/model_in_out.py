@@ -52,12 +52,11 @@ class ModelInOut:
             "Save/Load directory is empty!"
         if self.load_model is not None:
             self.model.load_weights(f"experiments/{self.load_model}/model.h5")
-            print("load model")
         else:
             self.history = self.model.fit(
                 self.train_generator["Patches"],
                 batch_size=64,
-                epochs=600,
+                epochs=250,
                 validation_data=self.val_generator["Patches"],
                 verbose=1,
                 shuffle=True
@@ -85,4 +84,4 @@ class ModelInOut:
         self._evaluate_model()
 
         if self.show_stats:
-            LearningChartBuilder(self.history.history).draw()
+            LearningChartBuilder(self.history.history, save_model=self.save_model).draw()

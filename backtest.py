@@ -115,4 +115,4 @@ class Backtest:
 
     def draw(self) -> None:
         """Показываем график торговли"""
-        BacktestChartBuilder(self.signals, self.stats).draw()
+        BacktestChartBuilder(self.signals, self.stats, self.save_stats).draw()

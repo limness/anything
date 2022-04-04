@@ -26,6 +26,7 @@ def start_experiment(token, features, experiment_name="") -> None:
         features=features,
         show_windows=False,
         show_markup=False,
+        # show_features=['__all__'],
         markup_frequency=40,
         save_scaler=experiment_name
     )
@@ -49,7 +50,7 @@ def start_experiment(token, features, experiment_name="") -> None:
         token,
         data_builder.windows["train"],
         data_builder.windows["val"],
-        data_builder.windows["val"],
+        data_builder.windows["test"],
         y_scaler=data_builder.y_scaler,
         show_stats=True,
         save_model=experiment_name
@@ -100,7 +101,7 @@ def start_test(token, features, experiment_name="") -> None:
     signals = model_million.predict()
 
     # Запускаем бэктест
-    backtest = Backtest(signals=signals, balance=1000, fix_deal=0.1, commision=0.1)
+    backtest = Backtest(signals=signals, balance=1000, fix_deal=0.1, commision=0.0)
     backtest.run()
     backtest.show_stats()
     backtest.draw()
@@ -109,8 +110,8 @@ def start_test(token, features, experiment_name="") -> None:
 if __name__ == '__main__':
 
     token = "ADA-USDT"
-    features = ["open_as_is", "high_as_is", "LF"]
-    experiment_name = "Experiment_04042022214955_Markup_Fix" #Experiment_04042022214955_Markup_Fix
+    features = ["open_as_is", "high_as_is", "volume_as_is", "LF", "open_derivate"]
+    experiment_name = "Markup_Fix" #Experiment_04042022214955_Markup_Fix
 
-    # start_experiment(token, features, experiment_name)
-    start_test(token, features, experiment_name)
+    start_experiment(token, features, experiment_name)
+    # start_test(token, features, experiment_name)

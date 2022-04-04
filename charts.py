@@ -314,8 +314,9 @@ class LearningChartBuilder:
     """Класс для построения графиков
     обучения нейронной сети"""
 
-    def __init__(self, history) -> None:
+    def __init__(self, history, save_model) -> None:
         self.history = history
+        self.save_model = save_model
 
         plt.style.use("seaborn-dark")
 
@@ -334,6 +335,7 @@ class LearningChartBuilder:
         ax0.plot(self.history['binary_accuracy'], label="Accuracy")
         ax0.plot(self.history['val_binary_accuracy'], label="Val Accuracy")
 
+        plt.savefig(f"experiments/{self.save_model}/train_process.png")
         plt.legend()
         plt.show()
 
@@ -342,9 +344,10 @@ class BacktestChartBuilder:
     """Класс для построения графиков
     бэктеста"""
 
-    def __init__(self, signals, stats) -> None:
+    def __init__(self, signals, stats, save_stats) -> None:
         self.signals = signals
         self.stats = stats
+        self.save_stats = save_stats
 
         plt.style.use("seaborn-dark")
 
@@ -355,7 +358,7 @@ class BacktestChartBuilder:
 
     def draw(self) -> None:
         """Метод для вывода графика"""
-        fig, (ax0, ax1, ax2) = plt.subplots(3, 1, figsize=(13, 3), sharex=True)
+        fig, (ax0, ax1, ax2) = plt.subplots(3, 1, figsize=(19, 15), sharex=True)
 
         # Формируем график прибыли
         ax0.set_title("PNL")
@@ -376,5 +379,6 @@ class BacktestChartBuilder:
         ax2.plot(self.signals.index, self.signals["Signal"], label="Signals")
         ax2.set_ylabel("Signal")
 
+        plt.savefig(f"experiments/{self.save_stats}/backtesting.png")
         plt.legend()
         plt.show()
