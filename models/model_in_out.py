@@ -56,7 +56,7 @@ class ModelInOut:
             self.history = self.model.fit(
                 self.train_generator["Patches"],
                 batch_size=64,
-                epochs=250,
+                epochs=2000,
                 validation_data=self.val_generator["Patches"],
                 verbose=1,
                 shuffle=True

@@ -31,11 +31,12 @@ class DataBuilder:
 
     """
 
-    def __init__(self, token: str, train_window=None, val_window=0.4, test_window=None,
+    def __init__(self, token: str, dataset=None, train_window=None, val_window=0.4, test_window=None,
                  features=None, save_serializer=False, serializer="csv", patch_size=30,
                  markup_frequency=10.0, show_features=None, show_windows=False, show_markup=False,
                  embed_train=False, from_end=True, step_window=500, save_scaler=None, load_scaler=None) -> None:
         self.token = token
+        self.dataset = dataset
         self.patch_size = patch_size
         self.features = features
         self.serializer = serializer
@@ -64,6 +65,12 @@ class DataBuilder:
 
     def _try_load_or_make_dataset(self) -> ():
         """Метод для формирования первоначального датасета"""
+
+        if self.dataset is not None:
+            # Устанавливаем датасет
+            data = self._form_dataframe_from_list(self.dataset)
+            return data
+
         try:
             # Попробуем загрузить файл из директории
             data = pd.read_csv(f"datasets/{self.token}_.csv")
@@ -71,10 +78,7 @@ class DataBuilder:
             # Файл не найден, необходимо сгенерировать датасет с нуля
             # для этого выгрузим не отформатированные данные из каталога _no_format
             data = self._read_dataset_from_file()[:5000, :-1]
-            # Переводим numpy массив в DataFrame, чтобы в дальнейшем было удобно работать с данными
-            data = pd.DataFrame(data, columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
-            data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
-            data = data.set_index("Datetime")
+            data = self._form_dataframe_from_list(data)
 
             if self.save_serializer:
                 # Сохраним результаты в файл, что в дальнейшем выгружать все из кеша
@@ -82,7 +86,18 @@ class DataBuilder:
 
         return data
 
-    def _try_load_or_make_markup(self, data) -> ():
+    def _form_dataframe_from_list(self, dataset: list) -> pd.DataFrame:
+        """Метод для формирования датафрейма из листа"""
+        dataset = np.array(dataset).astype(float)
+
+        # Переводим numpy массив в DataFrame, чтобы в дальнейшем было удобно работать с данными
+        data = pd.DataFrame(dataset, columns=["Datetime", "Open", "High", "Low", "Close", "Volume"])
+        data['Datetime'] = pd.to_datetime(data['Datetime'].astype('int64'), unit='s')
+        data = data.set_index("Datetime")
+
+        return data
+
+    def _try_load_or_make_markup(self, data) -> list:
         """Метод для формирования разметки датасета"""
         try:
             # Попробуем загрузить файл из директории
@@ -100,8 +115,8 @@ class DataBuilder:
     def _try_load_or_make_scaler(self) -> tuple:
         """Метод для формирования скейлера датасета"""
         if self.load_scaler is not None:
-            x_scaler = joblib.load(f"experiments/{self.load_scaler}/x_scaler")
-            y_scaler = joblib.load(f"experiments/{self.load_scaler}/y_scaler")
+            x_scaler = joblib.load(self.load_scaler["x"])#f"experiments/{self.load_scaler}/x_scaler")
+            y_scaler = joblib.load(self.load_scaler["y"])#f"experiments/{self.load_scaler}/y_scaler")
         else:
             x_scaler = preprocessing.MinMaxScaler()
             y_scaler = preprocessing.OneHotEncoder()
@@ -191,7 +206,7 @@ class DataBuilder:
             data = self.x_scaler.transform(data)
         else:
             data = self.x_scaler.fit_transform(data)
-            joblib.dump(self.x_scaler, f"experiments/{self.save_scaler}/x_scaler")
+            joblib.dump(self.x_scaler, self.save_scaler["x"])# f"experiments/{self.save_scaler}/x_scaler")
         return data
 
     def __scaler_y(self, data: pd.DataFrame) -> np.array:
@@ -200,11 +215,11 @@ class DataBuilder:
             data = self.y_scaler.transform(data).toarray()
         else:
             data = self.y_scaler.fit_transform(data).toarray()
-            joblib.dump(self.y_scaler, f"experiments/{self.save_scaler}/y_scaler")
+            joblib.dump(self.y_scaler, self.save_scaler["y"])# f"experiments/{self.save_scaler}/y_scaler")
         return data
 
     def _read_dataset_from_file(self) -> np.array:
         """Метод для чтения данных с биржи из файла"""
         with open(f'tokens/{self.token}.pickle', 'rb') as handle:
             klines_per_day = pickle.load(handle)
-        return np.array(klines_per_day).astype(float)
+        return klines_per_day
