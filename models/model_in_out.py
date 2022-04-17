@@ -7,6 +7,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras import Model
+from tensorflow.keras.callbacks import ModelCheckpoint
 from sklearn.preprocessing import OneHotEncoder
 from charts import LearningChartBuilder
 
@@ -35,7 +36,7 @@ class ModelInOut:
 
     def _build_model(self) -> None:
         """Метод для построения архитектуры модели"""
-        input = Input(shape=(30, 3))
+        input = Input(shape=(30, 4))
         x = Flatten()(input)
         x = Dense(200, activation='relu')(x)
         x = Dropout(0.3)(x)
@@ -53,11 +54,19 @@ class ModelInOut:
         if self.load_model is not None:
             self.model.load_weights(f"experiments/{self.load_model}/model.h5")
         else:
+            model_checkpoint_callback = ModelCheckpoint(
+                filepath='',
+                save_weights_only=True,
+                monitor='val_accuracy',
+                mode='max',
+                save_best_only=True)
             self.history = self.model.fit(
-                self.train_generator["Patches"],
-                batch_size=64,
-                epochs=2000,
-                validation_data=self.val_generator["Patches"],
+                self.train_generator["X"],
+                self.train_generator["Y"],
+                batch_size=128,
+                epochs=400,
+                validation_data=(self.val_generator["X"], self.val_generator["Y"]),
+                callbacks=[model_checkpoint_callback],
                 verbose=1,
                 shuffle=True
             )
@@ -66,17 +75,23 @@ class ModelInOut:
 
     def _evaluate_model(self) -> None:
         """Метод для проверки модели на тестовых данных"""
-        stats = self.model.evaluate(self.test_generator["Patches"])
+        stats = self.model.evaluate(self.test_generator["X"], self.test_generator["Y"])
         print('Evaluate:', stats)
 
     def predict(self) -> pd.DataFrame:
         """Метод для прогноза цены"""
         assert self.test_generator is not None, \
             "Test generator is empty!"
-        predictions = self.model.predict(self.test_generator["Patches"])
+        predictions = self.model.predict(self.test_generator["X"])
         predictions = self.y_scaler.inverse_transform(predictions).flatten()
         signals = pd.DataFrame(predictions, columns=["Signal"], index=self.test_generator["Data"].index)
         signals = pd.concat([self.test_generator["Data"], signals], axis=1)
+
+        for index, pred in enumerate(predictions):
+            print("pred", pred, self.test_generator["Y"][index])
+        # for true in self.test_generator["Y"]:
+        #     print("true", true)
+
         return signals
 
     def stats(self) -> None:

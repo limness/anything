@@ -84,9 +84,13 @@ class FeaturesBuilder:
         if "close_as_is" in self.features:
             df["Close"] = dataset["Close"]
 
-        # Добавляем параметр закрытия цены
+        # Добавляем параметр объема
+        if "volume_as_is" in self.features:
+            df["Volume"] = dataset["Volume"]
+
+        # Добавляем параметр производной закрытия цены
         if "open_derivate" in self.features:
-            df["Open"] = dataset["Open"].diff()
+            df["OpenDerivate"] = dataset["Open"].diff()
 
         # Заменяем наниты на нули
         df = df.fillna(0)
