@@ -69,12 +69,6 @@ def start_experiment(token, features, experiment_name="") -> None:
     )
     data_builder.compile_windows()
 
-    # print("source data", data_builder.data)
-    # print("source targets", data_builder.targets)
-    # print("+++++++ patches +++++++++")
-    # print("source data", data_builder.windows["train"]["X"])
-    # print("source targets", data_builder.windows["train"]["Y"])
-
     # Запускаем обучение сети
     model_million = ModelInOut(
         token,
@@ -145,8 +139,8 @@ if __name__ == '__main__':
 
     token = "ADA-USDT"
     # features = ["open_as_is", "high_as_is", "volume_as_is", "LF", "open_derivate"]
-    features = ["open_as_is", "high_as_is", "volume_as_is", "open_derivate"] #, "volume_as_is", "open_derivate"
-    experiment_name = "Fix_Features" #Experiment_04042022214955_Markup_Fix
+    features = ["volume_as_is", "open_derivate", "sma"] #, "volume_as_is", "open_derivate"
+    experiment_name = "First_Indicator" #Experiment_04042022214955_Markup_Fix
 
     start_experiment(token, features, experiment_name)
     # start_test(token, experiment_name)

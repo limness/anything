@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import ta
 from scipy.signal import butter, filtfilt
 from charts import FeaturesChartBuilder
 
@@ -91,6 +92,12 @@ class FeaturesBuilder:
         # Добавляем параметр производной закрытия цены
         if "open_derivate" in self.features:
             df["OpenDerivate"] = dataset["Open"].diff()
+
+        if "sma" in self.features:
+            indicator_bb = ta.momentum.AwesomeOscillatorIndicator(high=dataset["High"], low=dataset["Low"],
+                                                                  window1=5, window2=34)
+            # Add Bollinger Bands features
+            df['SMA'] = indicator_bb.awesome_oscillator()
 
         # Заменяем наниты на нули
         df = df.fillna(0)

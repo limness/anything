@@ -36,7 +36,7 @@ class ModelInOut:
 
     def _build_model(self) -> None:
         """Метод для построения архитектуры модели"""
-        input = Input(shape=(30, 4))
+        input = Input(shape=(30, 3))
         x = Flatten()(input)
         x = Dense(200, activation='relu')(x)
         x = Dropout(0.3)(x)
