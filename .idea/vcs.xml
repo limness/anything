@@ -4,6 +4,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/anything-consumer" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/anything-producer" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/binance-drops-detector" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/instagram-django" vcs="Git" />
   </component>
 </project>

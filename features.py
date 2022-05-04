@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import ta
-from scipy.signal import butter, filtfilt
+import transformers
 from charts import FeaturesChartBuilder
 
 
@@ -69,35 +69,44 @@ class FeaturesBuilder:
         по текущим значениям, не зависят от будущего"""
         df = pd.DataFrame(index=dataset.index)
 
-        # Добавляем параметр открытия цены
-        if "open_as_is" in self.features:
-            df["Open"] = dataset["Open"]
+        for feature in self.features:
+            if feature["Type"] == "Global":
+                transformer = getattr(transformers, feature["Transformer"])
 
-        # Добавляем параметр пика цены
-        if "high_as_is" in self.features:
-            df["High"] = dataset["High"]
+                if feature["Source"] in df:
+                    df[feature["Name"]] = transformer(df, feature["Source"], feature["Params"])
+                else:
+                    df[feature["Name"]] = transformer(dataset, feature["Source"], feature["Params"])
 
-        # Добавляем параметр дна цены
-        if "low_as_is" in self.features:
-            df["Low"] = dataset["Low"]
-
-        # Добавляем параметр закрытия цены
-        if "close_as_is" in self.features:
-            df["Close"] = dataset["Close"]
-
-        # Добавляем параметр объема
-        if "volume_as_is" in self.features:
-            df["Volume"] = dataset["Volume"]
-
-        # Добавляем параметр производной закрытия цены
-        if "open_derivate" in self.features:
-            df["OpenDerivate"] = dataset["Open"].diff()
-
-        if "sma" in self.features:
-            indicator_bb = ta.momentum.AwesomeOscillatorIndicator(high=dataset["High"], low=dataset["Low"],
-                                                                  window1=5, window2=34)
-            # Add Bollinger Bands features
-            df['SMA'] = indicator_bb.awesome_oscillator()
+        # # Добавляем параметр открытия цены
+        # if "open_as_is" in self.features:
+        #     df["Open"] = dataset["Open"]
+        #
+        # # Добавляем параметр пика цены
+        # if "high_as_is" in self.features:
+        #     df["High"] = dataset["High"]
+        #
+        # # Добавляем параметр дна цены
+        # if "low_as_is" in self.features:
+        #     df["Low"] = dataset["Low"]
+        #
+        # # Добавляем параметр закрытия цены
+        # if "close_as_is" in self.features:
+        #     df["Close"] = dataset["Close"]
+        #
+        # # Добавляем параметр объема
+        # if "volume_as_is" in self.features:
+        #     df["Volume"] = dataset["Volume"]
+        #
+        # # Добавляем параметр производной закрытия цены
+        # if "open_derivate" in self.features:
+        #     df["OpenDerivate"] = dataset["Open"].diff()
+        #
+        # if "sma" in self.features:
+        #     indicator_bb = ta.momentum.AwesomeOscillatorIndicator(high=dataset["High"], low=dataset["Low"],
+        #                                                           window1=5, window2=34)
+        #     # Add Bollinger Bands features
+        #     df['SMA'] = indicator_bb.awesome_oscillator()
 
         # Заменяем наниты на нули
         df = df.fillna(0)
@@ -108,21 +117,15 @@ class FeaturesBuilder:
         """Метод для формирования локальных фич для датасета.
         Локальные фичи - фичи, которые сильно зависят от данных в будущем"""
         df = pd.DataFrame(index=dataset.index)
-        # Добавляем параметр фильтра, используя цену закрытия
-        if "LF" in self.features:
-            lf_window = self.features_args.get("LF_window", 40)
-            df["LF" + str(lf_window)] = FeaturesBuilder.butter_lowpass_filter(dataset["Close"], fs=lf_window)
+
+        for feature in self.features:
+            if feature["Type"] == "Local":
+                transformer = getattr(transformers, feature["Transformer"])
+                df[feature["Name"]] = transformer(dataset, df, feature["Source"], feature["Params"])
+        # # Добавляем параметр фильтра, используя цену закрытия
+        # if "LF" in self.features:
+        #     lf_window = self.features_args.get("LF_window", 40)
+        #     df["LF" + str(lf_window)] = FeaturesBuilder.butter_lowpass_filter(dataset["Close"], fs=lf_window)
         # Заменяем наниты на нули
         df = df.fillna(0)
         return df
-
-    @staticmethod
-    def butter_lowpass_filter(data, cutoff=2, fs=30.0, order=2):
-        """Метод для формирования фильтра в качестве фичи"""
-        # Nyquist Frequency
-        nyq = 0.5 * fs
-        normal_cutoff = cutoff / nyq
-        # Get the filter coefficients
-        b, a = butter(order, normal_cutoff, btype='low', analog=False)
-        y = filtfilt(b, a, data)
-        return y

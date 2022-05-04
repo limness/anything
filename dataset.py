@@ -243,6 +243,7 @@ class DataBuilder:
             patch_size=self.patch_size,
             show_features=self.show_features
         ).make_features()
+        print(featurized_data)
         featurized_data = self.__scaler_x(featurized_data) #np.array(featurized_data.values)#
         return data, featurized_data, targets
 

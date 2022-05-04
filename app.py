@@ -18,7 +18,7 @@ def create_experiment_directory(experiment_name: str) -> str:
 def save_features(experiment_name: str, features: list) -> None:
     """Метод для создания директории нового эксперимента"""
     with open(f"experiments/{experiment_name}/features.txt", "+w") as writer:
-        features_str = ", ".join(features)
+        features_str = ", ".join([feature['Name'] for feature in features])
         writer.write(features_str)
 
 
@@ -37,6 +37,7 @@ def start_experiment(token, features, experiment_name="") -> None:
     # Сохраняем фичи
     save_features(experiment_name, features)
 
+    patch_size = 30
     # Создаем словарь из путей где хранятся скейлеры
     scalers = {
         "x": f"experiments/{experiment_name}/x_scaler",
@@ -50,7 +51,7 @@ def start_experiment(token, features, experiment_name="") -> None:
         show_markup=False,
         markup_frequency=40,
         save_scaler=scalers,
-        patch_size=30,
+        patch_size=patch_size,
         cut_dataset=1600,
     )
     data_builder.add_window(
@@ -77,7 +78,8 @@ def start_experiment(token, features, experiment_name="") -> None:
         data_builder.windows["test"],
         y_scaler=data_builder.y_scaler,
         show_stats=True,
-        save_model=experiment_name
+        save_model=experiment_name,
+        input_layer=(patch_size, len(features))
     )
     # Получаем сигналы
     signals = model_million.predict()
@@ -101,6 +103,7 @@ def start_test(token, experiment_name="") -> None:
     # Выгружаем фичи
     features = load_features(experiment_name)
     print("features load", features)
+    patch_size = 30
 
     # Начинаем готовить данные для модели
     data_builder = DataBuilder(
@@ -109,7 +112,8 @@ def start_test(token, experiment_name="") -> None:
         show_windows=True,
         show_markup=False,
         markup_frequency=50,
-        load_scaler=experiment_name
+        load_scaler=experiment_name,
+        patch_size=patch_size,
     )
     data_builder.add_window(
         name="test",
@@ -123,7 +127,8 @@ def start_test(token, experiment_name="") -> None:
         token,
         test_generator=data_builder.windows["test"],
         y_scaler=data_builder.y_scaler,
-        load_model=experiment_name
+        load_model=experiment_name,
+        input_layer=(patch_size, len(features))
     )
     # Получаем сигналы
     signals = model_million.predict()
@@ -138,9 +143,79 @@ def start_test(token, experiment_name="") -> None:
 if __name__ == '__main__':
 
     token = "ADA-USDT"
-    # features = ["open_as_is", "high_as_is", "volume_as_is", "LF", "open_derivate"]
-    features = ["volume_as_is", "open_derivate", "sma"] #, "volume_as_is", "open_derivate"
-    experiment_name = "First_Indicator" #Experiment_04042022214955_Markup_Fix
+    features = [
+        {
+            "Name": "Open",
+            "Source": "Open",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        {
+            "Name": "High",
+            "Source": "High",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        {
+            "Name": "Low",
+            "Source": "Low",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        {
+            "Name": "Close",
+            "Source": "Close",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        {
+            "Name": "Volume",
+            "Source": "Close",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        {
+            "Name": "NQ",
+            "Source": "Close",
+            "Transformer": "nq",
+            "Type": "Global",
+            "Params": {"fs": 120}
+        },
+        {
+            "Name": "NQ_Deriv",
+            "Source": "NQ",
+            "Transformer": "deriv",
+            "Type": "Global",
+            "Params": {}
+        },
+        # {
+        #     "Name": "Volume",
+        #     "Source": "Close",
+        #     "Transformer": "deriv",
+        #     "Type": "Global",
+        #     "Params": {}
+        # },
+        # {
+        #     "Name": "Open",
+        #     "Source": "Open",
+        #     "Transformer": "deriv",
+        #     "Type": "Local",
+        #     "Params": {}
+        # },
+        # {
+        #     "Name": "ao_indicator",
+        #     "Source": "Open",
+        #     "Transformer": "deriv",
+        #     "Type": "Local",
+        #     "Params": {}
+        # }
+    ]
+    experiment_name = "First_Indicator"
 
     start_experiment(token, features, experiment_name)
     # start_test(token, experiment_name)
